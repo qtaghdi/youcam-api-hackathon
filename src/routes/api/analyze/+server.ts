@@ -16,13 +16,13 @@ export const POST: RequestHandler = async ({ request }) => {
 			? {
 					missing: '계속하려면 이미지를 선택해 주세요.',
 					type: 'JPG 또는 PNG 이미지를 사용해 주세요.',
-					size: '이미지는 10MB보다 작아야 합니다.',
+					size: '준비된 이미지는 4MB보다 작아야 합니다.',
 					generic: '리뷰를 완료하지 못했습니다.'
 				}
 			: {
 					missing: 'Choose an image to continue.',
 					type: 'Use a JPG or PNG image.',
-					size: 'Your image must be smaller than 10 MB.',
+					size: 'The prepared image must be smaller than 4 MB.',
 					generic: 'We couldn’t complete the review.'
 				};
 	const brightnessValue = Number(form.get('brightness'));

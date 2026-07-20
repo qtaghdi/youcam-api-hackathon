@@ -1,11 +1,13 @@
 # Presence
 
-중요한 온라인 순간을 앞둔 사용자의 촬영 환경과 얼굴 컨디션을 점검하고, 더 나은 시각적 첫인상을 준비하도록 돕는 SvelteKit 서비스입니다.
+면접, 온라인 미팅, 발표, 프로필 사진을 앞둔 사용자가 직접 조절할 수 있는 화면 요소를 점검하고 더 나은 첫인상을 준비하도록 돕는 SvelteKit 서비스입니다. 성격이나 역량, 외모를 평가하지 않고 구도·조명·얼굴 위치·배경·컬러 조화에 집중합니다.
 
 ## 구현 범위
 
-- 브라우저 카메라 프리뷰와 MediaPipe 기반 밝기·얼굴 위치·정면 여부 가이드
+- 면접·온라인 미팅·발표·프로필 사진별 준비 모드와 상황별 체크리스트
+- 브라우저 카메라 프리뷰와 MediaPipe 기반 밝기·얼굴 위치·정면 여부·배경 준비도 가이드
 - 카메라 권한 거부 시 JPG/PNG 업로드 대체 흐름
+- 10MB 원본 이미지를 기기에서 최대 1920px·3.5MB 수준으로 압축한 뒤 업로드
 - 촬영, 검토, YouCam 분석, 개선 가이드, 재촬영, Before/After 비교
 - 영어 기본값과 기기별 언어 설정을 지원하는 한국어 i18n
 - YouCam AI Skin Analysis v2.1과 Skin Tone Analysis v2.0 서버 연동
@@ -54,7 +56,7 @@ pnpm build      # Vercel 배포 빌드
 src/lib/domains/
 ├── camera/               # 브라우저 카메라와 촬영 품질
 ├── analysis/             # 공유 계약과 YouCam 서버 어댑터
-├── appearance-guidance/  # 결과 기반 개선 가이드
+├── appearance-guidance/  # 분석 결과를 실행 가능한 화면 개선 가이드로 변환
 └── comparison/           # 기기 내 Before/After 상태
 
 src/routes/

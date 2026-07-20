@@ -43,6 +43,30 @@ function lightingLevel(brightness: number): QualityLevel {
 	return brightness >= 0.38 && brightness <= 0.82 ? 'good' : 'warning';
 }
 
+function backgroundLevel(context: CanvasRenderingContext2D, width: number, height: number) {
+	const { data } = context.getImageData(0, 0, width, height);
+	let total = 0;
+	let totalSquared = 0;
+	let count = 0;
+
+	for (let y = 0; y < height; y += 2) {
+		for (let x = 0; x < width; x += 2) {
+			const outsideFaceArea = x < width * 0.27 || x > width * 0.73 || y < height * 0.16;
+			if (!outsideFaceArea) continue;
+			const index = (y * width + x) * 4;
+			const luminance = 0.2126 * data[index] + 0.7152 * data[index + 1] + 0.0722 * data[index + 2];
+			total += luminance;
+			totalSquared += luminance * luminance;
+			count += 1;
+		}
+	}
+
+	if (!count) return 'unknown' satisfies QualityLevel;
+	const mean = total / count;
+	const deviation = Math.sqrt(Math.max(0, totalSquared / count - mean * mean)) / 255;
+	return deviation <= 0.21 ? 'good' : 'warning';
+}
+
 function faceGeometry(landmarks: NormalizedLandmark[], video: HTMLVideoElement) {
 	const xs = landmarks.map((point) => point.x);
 	const ys = landmarks.map((point) => point.y);
@@ -84,6 +108,7 @@ export async function inspectFrame(video: HTMLVideoElement): Promise<CameraQuali
 			face: 'unknown',
 			position: 'unknown',
 			lighting: 'unknown',
+			background: 'unknown',
 			brightness: 0,
 			messageKey: 'preparing'
 		};
@@ -92,6 +117,7 @@ export async function inspectFrame(video: HTMLVideoElement): Promise<CameraQuali
 	context.drawImage(video, 0, 0, canvas.width, canvas.height);
 	const brightness = averageBrightness(context, canvas.width, canvas.height);
 	const lighting = lightingLevel(brightness);
+	const background = backgroundLevel(context, canvas.width, canvas.height);
 	const landmarker = await getLandmarker();
 
 	if (!landmarker) {
@@ -99,6 +125,7 @@ export async function inspectFrame(video: HTMLVideoElement): Promise<CameraQuali
 			face: 'unknown',
 			position: 'unknown',
 			lighting,
+			background,
 			brightness,
 			messageKey: lighting === 'good' ? 'lookAhead' : 'brighterLight'
 		};
@@ -111,6 +138,7 @@ export async function inspectFrame(video: HTMLVideoElement): Promise<CameraQuali
 				face: 'warning',
 				position: 'warning',
 				lighting,
+				background,
 				brightness,
 				messageKey: 'centerFace'
 			};
@@ -119,20 +147,22 @@ export async function inspectFrame(video: HTMLVideoElement): Promise<CameraQuali
 		const geometry = faceGeometry(landmarks, video);
 		const position: QualityLevel =
 			geometry.centered && geometry.sized && geometry.frontal ? 'good' : 'warning';
-		const ready = position === 'good' && lighting === 'good';
+		const ready = position === 'good' && lighting === 'good' && background === 'good';
 		let messageKey: CameraQuality['messageKey'] = 'almostReady';
 		if (ready) messageKey = 'readyCapture';
 		else if (!geometry.sized) messageKey = 'adjustDistance';
 		else if (!geometry.centered) messageKey = 'moveCenter';
 		else if (!geometry.frontal) messageKey = 'headLevel';
 		else if (lighting !== 'good') messageKey = 'brighterLight';
+		else if (background !== 'good') messageKey = 'simplifyBackground';
 
-		return { face: 'good', position, lighting, brightness, messageKey };
+		return { face: 'good', position, lighting, background, brightness, messageKey };
 	} catch {
 		return {
 			face: 'unknown',
 			position: 'unknown',
 			lighting,
+			background,
 			brightness,
 			messageKey: 'lookAhead'
 		};

@@ -9,12 +9,14 @@ export type CameraMessageKey =
 	| 'readyCapture'
 	| 'adjustDistance'
 	| 'moveCenter'
-	| 'headLevel';
+	| 'headLevel'
+	| 'simplifyBackground';
 
 export type CameraQuality = {
 	face: QualityLevel;
 	position: QualityLevel;
 	lighting: QualityLevel;
+	background: QualityLevel;
 	brightness: number;
 	messageKey: CameraMessageKey;
 };

@@ -36,5 +36,9 @@ export type SkinMetric = z.infer<typeof skinMetricSchema>;
 export type AppearanceGuidance = z.infer<typeof appearanceGuidanceSchema>;
 export type AnalysisResult = z.infer<typeof analysisResultSchema>;
 
-export const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
+// Keep the multipart request comfortably below Vercel Functions' 4.5 MB body limit.
+export const MAX_IMAGE_BYTES = 4 * 1024 * 1024;
+export const MAX_PREPARED_IMAGE_BYTES = 3_500_000;
+export const MAX_SOURCE_IMAGE_BYTES = 10 * 1024 * 1024;
+export const MAX_IMAGE_DIMENSION = 1920;
 export const SUPPORTED_IMAGE_TYPES = ['image/jpeg', 'image/png'] as const;

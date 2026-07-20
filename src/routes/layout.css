@@ -8,12 +8,16 @@ html {
 		BlinkMacSystemFont,
 		'Segoe UI',
 		sans-serif;
-	background: #f7f5ef;
+	background: #f6f7f8;
 	-webkit-font-smoothing: antialiased;
 }
 
 body {
 	min-width: 320px;
+}
+
+html[lang='ko'] body {
+	word-break: keep-all;
 }
 
 button:focus-visible,
@@ -24,6 +28,6 @@ input:focus-visible {
 }
 
 ::selection {
-	background: #cbdad3;
-	color: #20201f;
+	background: #d9e7f2;
+	color: #1f2933;
 }

@@ -1,7 +1,9 @@
 <script lang="ts">
 	import { onMount, tick } from 'svelte';
+	import { resolve } from '$app/paths';
 	import {
 		ArrowRight,
+		Briefcase,
 		Camera,
 		Check,
 		CircleAlert,
@@ -9,13 +11,19 @@
 		RefreshCw,
 		ScanFace,
 		ShieldCheck,
+		Presentation,
 		Upload,
+		UserRound,
+		Users,
 		X
 	} from '@lucide/svelte';
 	import {
 		analysisResultSchema,
+		MAX_SOURCE_IMAGE_BYTES,
+		SUPPORTED_IMAGE_TYPES,
 		type AnalysisResult
 	} from '$lib/domains/analysis/shared/contracts';
+	import { prepareImageForUpload } from '$lib/domains/analysis/client/image';
 	import { isLocale, messages, type Locale } from '$lib/i18n/messages';
 	import type { CameraQuality } from '$lib/domains/camera/shared/contracts';
 	import { inspectFrame } from '$lib/domains/camera/client/quality';
@@ -25,11 +33,15 @@
 		saveBeforeCapture,
 		type StoredCapture
 	} from '$lib/domains/comparison/client/storage';
+	import LanguageButton from '$lib/components/LanguageButton.svelte';
 
 	type Stage = 'landing' | 'camera' | 'review' | 'analyzing' | 'result' | 'comparison';
+	type Scenario = 'interview' | 'meeting' | 'presentation' | 'profile';
+	const scenarios: Scenario[] = ['interview', 'meeting', 'presentation', 'profile'];
 
 	let stage = $state<Stage>('landing');
 	let locale = $state<Locale>('en');
+	let scenario = $state<Scenario>('interview');
 	let video = $state<HTMLVideoElement>();
 	let fileInput: HTMLInputElement;
 	let stream = $state<MediaStream | null>(null);
@@ -41,15 +53,34 @@
 	let isRetake = $state(false);
 	let cameraError = $state('');
 	let analysisError = $state('');
+	let uploadError = $state('');
+	let isPreparingImage = $state(false);
+	let preparedImage = $state<{
+		originalBytes: number;
+		preparedBytes: number;
+		wasOptimized: boolean;
+	} | null>(null);
+	let stageHeading = $state<HTMLHeadingElement>();
+	let analysisController: AbortController | null = null;
+	let qualityCheckInFlight = false;
 	let quality = $state<CameraQuality>({
 		face: 'unknown',
 		position: 'unknown',
 		lighting: 'unknown',
+		background: 'unknown',
 		brightness: 0.58,
 		messageKey: 'preparing'
 	});
 	let qualityTimer: ReturnType<typeof setInterval> | undefined;
 	const copy = $derived(messages[locale]);
+	const scenarioCopy = $derived(copy.scenarios[scenario]);
+	const preparedImageNote = $derived.by(() => {
+		if (!preparedImage) return '';
+		const preparedSize = formatFileSize(preparedImage.preparedBytes);
+		return preparedImage.wasOptimized
+			? copy.review.optimized(formatFileSize(preparedImage.originalBytes), preparedSize)
+			: copy.review.prepared(preparedSize);
+	});
 
 	const stepNumber = $derived(
 		stage === 'camera' || stage === 'review'
@@ -62,9 +93,10 @@
 	);
 	const readinessScore = $derived(
 		Math.round(
-			(quality.face === 'good' ? 36 : quality.face === 'warning' ? 12 : 20) +
-				(quality.position === 'good' ? 34 : quality.position === 'warning' ? 12 : 18) +
-				(quality.lighting === 'good' ? 30 : quality.lighting === 'warning' ? 10 : 16)
+			(quality.face === 'good' ? 28 : quality.face === 'warning' ? 10 : 16) +
+				(quality.position === 'good' ? 28 : quality.position === 'warning' ? 10 : 15) +
+				(quality.lighting === 'good' ? 24 : quality.lighting === 'warning' ? 8 : 13) +
+				(quality.background === 'good' ? 20 : quality.background === 'warning' ? 7 : 11)
 		)
 	);
 	const expectedGain = $derived(
@@ -89,11 +121,9 @@
 	const localizedSummary = $derived(
 		!result
 			? ''
-			: result.mode === 'demo'
-				? copy.report.summarySample
-				: result.overallScore >= 75
-					? copy.report.summaryPositive
-					: copy.report.summaryFocused
+			: result.overallScore >= 75
+				? scenarioCopy.summaryReady
+				: scenarioCopy.summaryImprove
 	);
 	const localizedMetrics = $derived(
 		result
@@ -169,6 +199,8 @@
 	onMount(() => {
 		const savedLocale = localStorage.getItem('presence-locale');
 		if (isLocale(savedLocale)) locale = savedLocale;
+		const savedScenario = localStorage.getItem('presence-scenario');
+		if (isScenario(savedScenario)) scenario = savedScenario;
 		document.documentElement.lang = locale;
 		previousCapture = readBeforeCapture();
 		return () => stopCamera();
@@ -180,11 +212,30 @@
 		document.documentElement.lang = nextLocale;
 	}
 
+	function isScenario(value: string | null): value is Scenario {
+		return scenarios.includes(value as Scenario);
+	}
+
+	function setScenario(nextScenario: Scenario) {
+		scenario = nextScenario;
+		localStorage.setItem('presence-scenario', nextScenario);
+	}
+
+	async function changeStage(nextStage: Stage) {
+		stage = nextStage;
+		await tick();
+		stageHeading?.focus({ preventScroll: true });
+		window.scrollTo({ top: 0 });
+	}
+
 	async function startExperience(retake = false) {
 		isRetake = retake;
 		analysisError = '';
-		stage = 'camera';
-		await tick();
+		uploadError = '';
+		captureFile = null;
+		captureUrl = '';
+		preparedImage = null;
+		await changeStage('camera');
 		await startCamera();
 	}
 
@@ -205,7 +256,13 @@
 			cameraVideo.srcObject = stream;
 			await cameraVideo.play();
 			qualityTimer = setInterval(async () => {
-				if (cameraVideo.readyState >= 2) quality = await inspectFrame(cameraVideo);
+				if (cameraVideo.readyState < 2 || qualityCheckInFlight) return;
+				qualityCheckInFlight = true;
+				try {
+					quality = await inspectFrame(cameraVideo);
+				} finally {
+					qualityCheckInFlight = false;
+				}
 			}, 650);
 		} catch (error) {
 			cameraError =
@@ -218,6 +275,7 @@
 	function stopCamera() {
 		if (qualityTimer) clearInterval(qualityTimer);
 		qualityTimer = undefined;
+		qualityCheckInFlight = false;
 		stream?.getTracks().forEach((track) => track.stop());
 		stream = null;
 	}
@@ -260,26 +318,68 @@
 			canvas.toBlob(resolve, 'image/jpeg', 0.9)
 		);
 		if (!blob) return;
-		captureFile = new File([blob], `presence-${Date.now()}.jpg`, { type: 'image/jpeg' });
-		captureUrl = canvas.toDataURL('image/jpeg', 0.84);
+		const file = new File([blob], `presence-${Date.now()}.jpg`, { type: 'image/jpeg' });
+		captureFile = file;
+		captureUrl = await readFile(file);
+		preparedImage = {
+			originalBytes: file.size,
+			preparedBytes: file.size,
+			wasOptimized: false
+		};
 		stopCamera();
-		stage = 'review';
+		await changeStage('review');
 	}
 
 	async function selectFile(event: Event) {
 		const input = event.currentTarget as HTMLInputElement;
 		const file = input.files?.[0];
 		if (!file) return;
-		if (!['image/jpeg', 'image/png'].includes(file.type) || file.size > 10 * 1024 * 1024) {
-			cameraError = copy.camera.errors.file;
+		uploadError = '';
+		if (
+			!SUPPORTED_IMAGE_TYPES.includes(file.type as (typeof SUPPORTED_IMAGE_TYPES)[number]) ||
+			file.size > MAX_SOURCE_IMAGE_BYTES
+		) {
+			uploadError = copy.camera.errors.file;
 			input.value = '';
 			return;
 		}
-		captureFile = file;
-		captureUrl = await readFile(file);
-		quality = { ...quality, brightness: await measureBrightness(captureUrl) };
-		stopCamera();
-		stage = 'review';
+
+		isPreparingImage = true;
+		try {
+			const prepared = await prepareImageForUpload(file);
+			captureFile = prepared.file;
+			captureUrl = await readFile(prepared.file);
+			preparedImage = {
+				originalBytes: prepared.originalBytes,
+				preparedBytes: prepared.file.size,
+				wasOptimized: prepared.wasOptimized
+			};
+			quality = { ...quality, brightness: await measureBrightness(captureUrl) };
+			cameraError = '';
+			stopCamera();
+			await changeStage('review');
+		} catch {
+			uploadError = copy.camera.errors.preparation;
+		} finally {
+			isPreparingImage = false;
+			input.value = '';
+		}
+	}
+
+	function openFilePicker() {
+		uploadError = '';
+		fileInput.click();
+	}
+
+	function formatFileSize(bytes: number) {
+		const megabyte = 1024 * 1024;
+		const useMegabytes = bytes >= megabyte;
+		return new Intl.NumberFormat(locale, {
+			style: 'unit',
+			unit: useMegabytes ? 'megabyte' : 'kilobyte',
+			unitDisplay: 'short',
+			maximumFractionDigits: 1
+		}).format(useMegabytes ? bytes / megabyte : bytes / 1024);
 	}
 
 	function readFile(file: File) {
@@ -319,32 +419,51 @@
 	async function retake() {
 		captureFile = null;
 		captureUrl = '';
+		preparedImage = null;
 		await startExperience(isRetake);
 	}
 
 	async function analyze() {
 		if (!captureFile) return;
 		analysisError = '';
-		stage = 'analyzing';
+		analysisController?.abort();
+		const controller = new AbortController();
+		analysisController = controller;
+		await changeStage('analyzing');
 		const form = new FormData();
 		form.set('image', captureFile);
 		form.set('brightness', String(quality.brightness));
 		form.set('locale', locale);
+		form.set('scenario', scenario);
 
 		try {
-			const response = await fetch('/api/analyze', { method: 'POST', body: form });
+			const response = await fetch('/api/analyze', {
+				method: 'POST',
+				body: form,
+				signal: controller.signal
+			});
 			const body = await response.json();
 			if (!response.ok) throw new Error(body.message ?? copy.review.errors.generic);
 			result = analysisResultSchema.parse(body);
 			if (isRetake && previousCapture) {
-				stage = 'comparison';
+				await changeStage('comparison');
 			} else {
-				stage = 'result';
+				await changeStage('result');
 			}
 		} catch (error) {
+			if (error instanceof DOMException && error.name === 'AbortError') return;
 			analysisError = error instanceof Error ? error.message : copy.review.errors.interrupted;
-			stage = 'review';
+			await changeStage('review');
+		} finally {
+			if (analysisController === controller) analysisController = null;
 		}
+	}
+
+	async function cancelAnalysis() {
+		analysisController?.abort();
+		analysisController = null;
+		analysisError = '';
+		await changeStage('review');
 	}
 
 	function improve() {
@@ -354,15 +473,20 @@
 		void startExperience(true);
 	}
 
-	function startOver() {
+	async function startOver() {
+		if (stage !== 'landing' && !window.confirm(copy.common.startOverConfirm)) return;
+		analysisController?.abort();
+		analysisController = null;
+		stopCamera();
 		clearBeforeCapture();
 		previousCapture = null;
 		captureFile = null;
 		captureUrl = '';
+		preparedImage = null;
 		result = null;
 		isRetake = false;
 		comparisonPosition = 50;
-		stage = 'landing';
+		await changeStage('landing');
 	}
 
 	function qualityLabel(value: CameraQuality['face']) {
@@ -375,71 +499,128 @@
 	<meta name="description" content={copy.meta.description} />
 </svelte:head>
 
+<a class="skip-link" href="#main-content">{copy.header.skip}</a>
+
 <header class="site-header" class:compact={stage !== 'landing'}>
 	<button type="button" class="brand" aria-label={copy.header.home} onclick={startOver}>
 		<span class="brand-mark">P</span>
-		<span>Presence</span>
+		<span translate="no">Presence</span>
 	</button>
 	<div class="header-actions">
 		{#if stage === 'landing'}
-			<div class="privacy-note">
+			<a class="privacy-note" href={resolve('/privacy')}>
 				<ShieldCheck size={16} /><span>{copy.header.privacy}</span>
-			</div>
+			</a>
 		{:else}
-			<div class="steps" aria-label={copy.header.progress}>
+			<ol class="steps" aria-label={copy.header.progress}>
 				{#each [1, 2, 3] as step (step)}
-					<span class:active={step <= stepNumber}>{step < stepNumber ? '✓' : step}</span>
-					{#if step < 3}<i class:active={step < stepNumber}></i>{/if}
+					<li
+						class:active={step <= stepNumber}
+						aria-current={step === stepNumber ? 'step' : undefined}
+					>
+						<span aria-hidden="true">{step < stepNumber ? '✓' : step}</span>
+						<span class="visually-hidden">
+							{copy.header.stepLabels[step - 1]}{#if step === stepNumber}
+								&nbsp;· {copy.header.currentStep}
+							{:else if step < stepNumber}
+								&nbsp;· {copy.header.completedStep}
+							{/if}
+						</span>
+					</li>
+					{#if step < 3}<i aria-hidden="true" class:active={step < stepNumber}></i>{/if}
 				{/each}
-			</div>
+			</ol>
 		{/if}
-		<div class="language-switch" role="group" aria-label={copy.header.language}>
-			<button
-				type="button"
-				class:active={locale === 'en'}
-				aria-pressed={locale === 'en'}
-				onclick={() => setLocale('en')}>EN</button
-			>
-			<button
-				type="button"
-				class:active={locale === 'ko'}
-				aria-pressed={locale === 'ko'}
-				onclick={() => setLocale('ko')}>한국어</button
-			>
-		</div>
+		<LanguageButton {locale} ariaLabel={copy.header.language} onLocaleChange={setLocale} />
 	</div>
 </header>
 
-<main>
+<main id="main-content">
 	{#if stage === 'landing'}
 		<section class="hero">
 			<div class="hero-copy">
 				<p class="eyebrow"><span></span> {copy.landing.eyebrow}</p>
-				<h1>{copy.landing.title}<br /><em>{copy.landing.titleAccent}</em></h1>
+				<h1 class="stage-heading" bind:this={stageHeading} tabindex="-1">
+					<span>{copy.landing.title}</span>
+					<em>{copy.landing.titleAccent}</em>
+				</h1>
 				<p class="hero-description">
-					{copy.landing.descriptionFirst}<br />{copy.landing.descriptionSecond}
+					<span>{copy.landing.descriptionFirst}</span>
+					<span>{copy.landing.descriptionSecond}</span>
 				</p>
+				<div class="scenario-picker">
+					<p>{copy.landing.scenarioLabel}</p>
+					<div class="scenario-options" role="group" aria-label={copy.landing.scenarioLabel}>
+						{#each scenarios as item (item)}
+							<button
+								type="button"
+								class:active={scenario === item}
+								aria-pressed={scenario === item}
+								onclick={() => setScenario(item)}
+							>
+								<span class="scenario-icon">
+									{#if item === 'interview'}
+										<Briefcase size={17} />
+									{:else if item === 'meeting'}
+										<Users size={17} />
+									{:else if item === 'presentation'}
+										<Presentation size={17} />
+									{:else}
+										<UserRound size={17} />
+									{/if}
+								</span>
+								<span>
+									<strong>{copy.scenarios[item].label}</strong>
+									<small>{copy.scenarios[item].description}</small>
+								</span>
+							</button>
+						{/each}
+					</div>
+				</div>
 				<div class="hero-actions">
-					<button class="primary-button" onclick={() => startExperience(false)}>
+					<button type="button" class="primary-button" onclick={() => startExperience(false)}>
 						<Camera size={19} />
-						{copy.landing.startCamera}
+						{scenarioCopy.cta}
 						<ArrowRight size={18} />
 					</button>
-					<button class="text-button" onclick={() => fileInput.click()}
-						><Upload size={18} /> {copy.landing.upload}</button
+					<button
+						type="button"
+						class="text-button"
+						onclick={openFilePicker}
+						disabled={isPreparingImage}
+						><Upload size={18} />
+						{isPreparingImage ? copy.landing.preparingImage : copy.landing.upload}</button
 					>
 				</div>
+				{#if uploadError}
+					<div class="inline-status error" role="alert">
+						<CircleAlert size={17} /><span>{uploadError}</span>
+					</div>
+				{:else if isPreparingImage}
+					<div class="inline-status" role="status" aria-live="polite">
+						<span class="spinner"><RefreshCw size={16} /></span><span
+							>{copy.landing.preparingImage}</span
+						>
+					</div>
+				{/if}
 				<p class="microcopy"><ShieldCheck size={15} /> {copy.landing.microcopy}</p>
+				<p class="boundary-note">{copy.landing.boundary}</p>
 			</div>
 
 			<div class="hero-visual" aria-label={copy.landing.previewAria}>
 				<div class="preview-window">
 					<div class="preview-toolbar">
-						<span><Camera size={15} /> {copy.landing.cameraCheck}</span>
+						<span><Camera size={15} /> {scenarioCopy.label}</span>
 						<small><i></i> {copy.landing.readyCapture}</small>
 					</div>
 					<div class="preview-image">
-						<img src="/presence-preview.jpg" alt={copy.landing.portraitAlt} />
+						<img
+							src="/presence-preview.jpg"
+							alt={copy.landing.portraitAlt}
+							width="900"
+							height="1132"
+							fetchpriority="high"
+						/>
 						<div class="frame-status"><Check size={14} /> {copy.landing.framingGood}</div>
 					</div>
 					<div class="preview-summary">
@@ -448,7 +629,7 @@
 							<strong>82<span>/100</span></strong>
 						</div>
 						<div>
-							<strong>{copy.landing.previewTitle}</strong>
+							<strong>{scenarioCopy.previewTitle}</strong>
 							<span>{copy.landing.previewBody}</span>
 						</div>
 					</div>
@@ -471,7 +652,10 @@
 		<section class="workspace camera-workspace">
 			<div class="workspace-title">
 				<p class="eyebrow"><span></span> {copy.camera.eyebrow}</p>
-				<h2>{isRetake ? copy.camera.retakeTitle : copy.camera.title}</h2>
+				<span class="context-pill">{scenarioCopy.label}</span>
+				<h2 class="stage-heading" bind:this={stageHeading} tabindex="-1">
+					{isRetake ? copy.camera.retakeTitle : scenarioCopy.cameraTitle}
+				</h2>
 				<p>{copy.camera.intro}</p>
 			</div>
 
@@ -499,7 +683,16 @@
 						<div>
 							<span>{copy.camera.estimatedReadiness}</span><strong>{readinessScore}%</strong>
 						</div>
-						<div class="readiness-track"><i style={`width:${readinessScore}%`}></i></div>
+						<div
+							class="readiness-track"
+							role="progressbar"
+							aria-label={copy.camera.estimatedReadiness}
+							aria-valuemin="0"
+							aria-valuemax="100"
+							aria-valuenow={readinessScore}
+						>
+							<i style={`width:${readinessScore}%`}></i>
+						</div>
 						<small>{readinessScore >= 90 ? copy.camera.ready : copy.camera.adjust}</small>
 					</div>
 					<p>{copy.camera.liveGuidance}</p>
@@ -528,18 +721,47 @@
 						</div>
 						<em>{qualityLabel(quality.lighting)}</em>
 					</div>
+					<div class="quality-item">
+						<span class:good={quality.background === 'good'}
+							>{quality.background === 'good' ? '✓' : '•'}</span
+						>
+						<div>
+							<strong>{copy.camera.background}</strong><small>{copy.camera.backgroundHelp}</small>
+						</div>
+						<em>{qualityLabel(quality.background)}</em>
+					</div>
 					<div class="camera-tip">
 						<Lightbulb size={18} />
 						<p>
 							<strong>{copy.camera.quickWin}</strong>
-							{copy.camera.quickWinBody}
+							{scenarioCopy.quickWin}
 						</p>
 					</div>
-					<button class="primary-button wide" onclick={capturePhoto} disabled={!stream}
+					{#if uploadError}
+						<div class="inline-status error panel-status" role="alert">
+							<CircleAlert size={17} /><span>{uploadError}</span>
+						</div>
+					{:else if isPreparingImage}
+						<div class="inline-status panel-status" role="status" aria-live="polite">
+							<span class="spinner"><RefreshCw size={16} /></span><span
+								>{copy.camera.preparingImage}</span
+							>
+						</div>
+					{/if}
+					<button
+						type="button"
+						class="primary-button wide"
+						onclick={capturePhoto}
+						disabled={!stream || isPreparingImage}
 						><Camera size={18} /> {copy.camera.capture}</button
 					>
-					<button class="text-button wide" onclick={() => fileInput.click()}
-						><Upload size={17} /> {copy.camera.upload}</button
+					<button
+						type="button"
+						class="text-button wide"
+						onclick={openFilePicker}
+						disabled={isPreparingImage}
+						><Upload size={17} />
+						{isPreparingImage ? copy.camera.preparingImage : copy.camera.upload}</button
 					>
 					<p class="device-note"><ShieldCheck size={13} /> {copy.camera.deviceNote}</p>
 				</aside>
@@ -549,28 +771,31 @@
 		<section class="workspace review-workspace">
 			<div class="workspace-title">
 				<p class="eyebrow"><span></span> {copy.review.eyebrow}</p>
-				<h2>{copy.review.title}</h2>
+				<span class="context-pill">{scenarioCopy.label}</span>
+				<h2 class="stage-heading" bind:this={stageHeading} tabindex="-1">{copy.review.title}</h2>
 				<p>{copy.review.intro}</p>
 			</div>
 			<div class="review-card">
-				<img src={captureUrl} alt={copy.review.imageAlt} />
+				<img src={captureUrl} alt={copy.review.imageAlt} width="1080" height="1350" />
 				<div class="review-copy">
 					<div class="review-check">
 						<Check size={20} />
 						<div>
-							<strong>{copy.review.complete}</strong><small>{copy.review.privacy}</small>
+							<strong>{copy.review.complete}</strong>
+							<small>{copy.review.privacy}</small>
+							{#if preparedImageNote}<small class="prepared-note">{preparedImageNote}</small>{/if}
 						</div>
 					</div>
 					<ul>
 						{#each copy.review.checks as item (item)}<li>{item}</li>{/each}
 					</ul>
-					{#if analysisError}<div class="error-box">
+					{#if analysisError}<div class="error-box" role="alert">
 							<CircleAlert size={18} /><span>{analysisError}</span>
 						</div>{/if}
 					<div class="review-actions">
-						<button class="secondary-button" onclick={retake}
+						<button type="button" class="secondary-button" onclick={retake}
 							><RefreshCw size={17} /> {copy.review.retake}</button
-						><button class="primary-button" onclick={analyze}
+						><button type="button" class="primary-button" onclick={analyze}
 							><ScanFace size={18} /> {copy.review.build} <ArrowRight size={17} /></button
 						>
 					</div>
@@ -578,10 +803,11 @@
 			</div>
 		</section>
 	{:else if stage === 'analyzing'}
-		<section class="analyzing-screen">
+		<section class="analyzing-screen" role="status" aria-live="polite" aria-busy="true">
 			<div class="report-loader"><ScanFace size={34} /></div>
 			<p class="eyebrow"><span></span> {copy.analyzing.eyebrow}</p>
-			<h2>{copy.analyzing.title}</h2>
+			<span class="context-pill">{scenarioCopy.label}</span>
+			<h2 class="stage-heading" bind:this={stageHeading} tabindex="-1">{copy.analyzing.title}</h2>
 			<p>
 				{copy.analyzing.body}<br />{copy.analyzing.timing}
 			</p>
@@ -591,18 +817,24 @@
 					><ScanFace size={15} /> {copy.analyzing.appearance}</span
 				><span>{copy.analyzing.actions}</span>
 			</div>
+			<button type="button" class="text-button cancel-analysis" onclick={cancelAnalysis}>
+				{copy.analyzing.cancel}
+			</button>
 		</section>
 	{:else if stage === 'result' && result}
 		<section class="workspace result-workspace">
 			<div class="result-heading">
 				<div>
 					<p class="eyebrow"><span></span> {copy.report.eyebrow}</p>
-					<h2>
-						{copy.report.title}<br /><em>{copy.report.titleAccent}</em>
+					<h2 class="stage-heading" bind:this={stageHeading} tabindex="-1">
+						{scenarioCopy.reportTitle}<br /><em>{scenarioCopy.reportAccent}</em>
 					</h2>
 					<p>{localizedSummary}</p>
 				</div>
 				<div class="report-badges">
+					<span class="context-badge"
+						><small>{copy.report.scenario}</small>{scenarioCopy.label}</span
+					>
 					<span class="source-badge">{copy.report.source}</span>{#if result.mode === 'demo'}<span
 							class="demo-badge">{copy.report.sample}</span
 						>{/if}
@@ -632,7 +864,15 @@
 					{#each localizedMetrics as item (item.key)}
 						<div class="metric-row">
 							<span>{item.label}</span>
-							<div><i style={`width:${item.score}%`}></i></div>
+							<div
+								role="progressbar"
+								aria-label={item.label}
+								aria-valuemin="0"
+								aria-valuemax="100"
+								aria-valuenow={item.score}
+							>
+								<i style={`width:${item.score}%`}></i>
+							</div>
 							<strong>{item.score}</strong>
 						</div>
 					{/each}
@@ -645,8 +885,23 @@
 							>{copy.report.skinTone.undertone} {copy.report.undertone}</span
 						><small>{result.skinTone.hex}</small>
 					</div>
+					<p class="tone-note">{copy.report.paletteNote}</p>
 				</article>
 			</div>
+			<section class="moment-section">
+				<div class="section-heading">
+					<div>
+						<p class="card-label">{copy.report.momentLabel}</p>
+						<h3>{copy.report.momentTitle}</h3>
+					</div>
+					<span>{scenarioCopy.label}</span>
+				</div>
+				<ol>
+					{#each scenarioCopy.checklist as item, index (item)}
+						<li><span>0{index + 1}</span><strong>{item}</strong></li>
+					{/each}
+				</ol>
+			</section>
 			<section class="analysis-section">
 				<div class="section-heading">
 					<div>
@@ -691,9 +946,9 @@
 				</div>
 			</div>
 			<div class="result-actions">
-				<button class="secondary-button" onclick={startOver}
+				<button type="button" class="secondary-button" onclick={startOver}
 					><X size={17} /> {copy.report.startOver}</button
-				><button class="primary-button" onclick={improve}
+				><button type="button" class="primary-button" onclick={improve}
 					><RefreshCw size={18} /> {copy.report.recapture} <ArrowRight size={17} /></button
 				>
 			</div>
@@ -702,7 +957,10 @@
 		<section class="workspace comparison-workspace">
 			<div class="workspace-title">
 				<p class="eyebrow"><span></span> {copy.comparison.eyebrow}</p>
-				<h2>{copy.comparison.title} <em>{copy.comparison.titleAccent}</em></h2>
+				<span class="context-pill">{scenarioCopy.label}</span>
+				<h2 class="stage-heading" bind:this={stageHeading} tabindex="-1">
+					{copy.comparison.title} <em>{copy.comparison.titleAccent}</em>
+				</h2>
 				<p>{copy.comparison.intro}</p>
 			</div>
 			<div class="comparison-stage" style={`--position:${comparisonPosition}%`}>
@@ -710,9 +968,16 @@
 					class="after-image"
 					src={result.lightingImageUrl || captureUrl}
 					alt={copy.comparison.afterAlt}
+					width="1080"
+					height="1350"
 				/>
 				<div class="before-layer">
-					<img src={previousCapture.image} alt={copy.comparison.beforeAlt} />
+					<img
+						src={previousCapture.image}
+						alt={copy.comparison.beforeAlt}
+						width="1080"
+						height="1350"
+					/>
 				</div>
 				<div class="comparison-divider"><span><ArrowRight size={17} /></span></div>
 				<div class="comparison-tag before-tag">
@@ -721,6 +986,7 @@
 				<div class="comparison-tag after-tag">{copy.comparison.after} · {result.overallScore}</div>
 				<input
 					aria-label={copy.comparison.compareAria}
+					name="comparison"
 					type="range"
 					min="0"
 					max="100"
@@ -742,8 +1008,9 @@
 				</div>
 			</div>
 			<div class="result-actions">
-				<button class="secondary-button" onclick={startOver}>{copy.comparison.newReport}</button
-				><button class="primary-button" onclick={() => startExperience(true)}
+				<button type="button" class="secondary-button" onclick={startOver}
+					>{copy.comparison.newReport}</button
+				><button type="button" class="primary-button" onclick={() => startExperience(true)}
 					><RefreshCw size={18} /> {copy.comparison.captureAgain}</button
 				>
 			</div>
@@ -753,28 +1020,33 @@
 
 <input
 	bind:this={fileInput}
-	class="visually-hidden"
+	hidden
 	type="file"
+	name="image"
 	accept="image/jpeg,image/png"
+	aria-label={copy.landing.upload}
 	onchange={selectFile}
 />
 
 <footer>
 	<span>Presence</span>
 	<p>{copy.footer.disclaimer}</p>
-	<small>{copy.footer.source}</small>
+	<div class="footer-links">
+		<small>{copy.footer.source}</small>
+		<a href={resolve('/privacy')}>{copy.footer.privacy}</a>
+	</div>
 </footer>
 
 <style>
 	:global(:root) {
-		--ink: #20201f;
-		--muted: #706f69;
-		--cream: #f7f5ef;
-		--line: #dedbd1;
-		--blue: #446e83;
-		--blue-dark: #31596d;
-		--sage: #cbd6cb;
-		--paper: #fffefa;
+		--ink: #1f2933;
+		--muted: #66727d;
+		--cream: #f6f7f8;
+		--line: #d9dee3;
+		--blue: #2f628f;
+		--blue-dark: #244e73;
+		--sage: #dfe7e2;
+		--paper: #ffffff;
 	}
 	:global(*) {
 		box-sizing: border-box;
@@ -783,6 +1055,7 @@
 		margin: 0;
 		color: var(--ink);
 		background: var(--cream);
+		overflow-x: hidden;
 	}
 	:global(button),
 	:global(input) {
@@ -790,11 +1063,40 @@
 	}
 	:global(button) {
 		color: inherit;
+		touch-action: manipulation;
+		-webkit-tap-highlight-color: rgba(68, 110, 131, 0.14);
 	}
 	:global(em) {
-		font-family: Georgia, 'Times New Roman', serif;
-		font-weight: 400;
-		color: var(--blue);
+		font-family: inherit;
+		font-style: normal;
+		font-weight: inherit;
+		color: inherit;
+	}
+	.skip-link {
+		position: fixed;
+		top: 10px;
+		left: 10px;
+		z-index: 20;
+		padding: 10px 14px;
+		border-radius: 4px;
+		background: var(--ink);
+		color: white;
+		font-size: 13px;
+		font-weight: 700;
+		text-decoration: none;
+		transform: translateY(-160%);
+		transition: transform 0.16s ease;
+	}
+	.skip-link:focus-visible {
+		transform: translateY(0);
+	}
+	.stage-heading {
+		text-wrap: balance;
+		scroll-margin-top: 90px;
+	}
+	.stage-heading:focus-visible {
+		outline: none;
+		box-shadow: inset 0 -1px 0 rgba(68, 110, 131, 0.22);
 	}
 	.site-header {
 		height: 88px;
@@ -844,37 +1146,21 @@
 		gap: 7px;
 		color: var(--muted);
 		font-size: 12px;
+		text-decoration: none;
 	}
-	.language-switch {
-		display: inline-flex;
-		align-items: center;
-		padding: 3px;
-		border: 1px solid var(--line);
-		border-radius: 5px;
-		background: rgba(255, 255, 255, 0.46);
-	}
-	.language-switch button {
-		height: 28px;
-		padding: 0 9px;
-		border: 0;
-		border-radius: 3px;
-		background: transparent;
-		color: #8b8982;
-		cursor: pointer;
-		font-size: 9px;
-		font-weight: 750;
-		letter-spacing: 0.04em;
-	}
-	.language-switch button.active {
-		background: #fff;
+	.privacy-note:hover {
 		color: var(--ink);
-		box-shadow: 0 1px 4px rgba(44, 46, 42, 0.09);
+		text-decoration: underline;
+		text-underline-offset: 3px;
 	}
 	.steps {
 		display: flex;
 		align-items: center;
+		padding: 0;
+		margin: 0;
+		list-style: none;
 	}
-	.steps span {
+	.steps li > span:first-child {
 		width: 26px;
 		height: 26px;
 		border: 1px solid var(--line);
@@ -885,7 +1171,7 @@
 		font-size: 11px;
 		font-weight: 700;
 	}
-	.steps span.active {
+	.steps li.active > span:first-child {
 		color: white;
 		background: var(--blue);
 		border-color: var(--blue);
@@ -900,7 +1186,7 @@
 	}
 	.hero {
 		max-width: 1240px;
-		min-height: 660px;
+		min-height: 760px;
 		margin: auto;
 		padding: 72px 32px 60px;
 		display: grid;
@@ -931,11 +1217,95 @@
 		letter-spacing: -0.055em;
 		margin: 0;
 	}
+	.hero h1 > span,
+	.hero h1 > em {
+		display: block;
+	}
 	.hero-description {
 		margin: 28px 0 0;
 		color: var(--muted);
 		font-size: 16px;
 		line-height: 1.8;
+		text-wrap: pretty;
+	}
+	.hero-description span {
+		display: block;
+	}
+	.scenario-picker {
+		margin-top: 28px;
+	}
+	.scenario-picker > p {
+		margin: 0 0 11px;
+		color: #8b8982;
+		font-size: 9px;
+		font-weight: 800;
+		letter-spacing: 0.16em;
+	}
+	.scenario-options {
+		display: grid;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		gap: 8px;
+	}
+	.scenario-options button {
+		min-height: 82px;
+		padding: 12px;
+		border: 1px solid #dfdcd3;
+		border-radius: 5px;
+		background: rgba(255, 255, 255, 0.52);
+		display: grid;
+		grid-template-columns: 34px 1fr;
+		gap: 10px;
+		align-items: center;
+		text-align: left;
+		cursor: pointer;
+		transition:
+			border-color 0.18s ease,
+			background-color 0.18s ease,
+			transform 0.18s ease,
+			box-shadow 0.18s ease;
+	}
+	.scenario-options button:hover {
+		border-color: #aebdb5;
+		transform: translateY(-1px);
+	}
+	.scenario-options button.active {
+		border-color: #8ba69a;
+		background: #edf2ed;
+		box-shadow: inset 0 0 0 1px rgba(89, 123, 107, 0.12);
+	}
+	.scenario-options button:focus-visible,
+	.primary-button:focus-visible,
+	.secondary-button:focus-visible,
+	.text-button:focus-visible {
+		outline: 3px solid rgba(68, 110, 131, 0.24);
+		outline-offset: 2px;
+	}
+	.scenario-icon {
+		width: 34px;
+		height: 34px;
+		border-radius: 50%;
+		display: grid;
+		place-items: center;
+		background: #f0efea;
+		color: #77766f;
+	}
+	.scenario-options button.active .scenario-icon {
+		background: #d9e5dd;
+		color: #496b5b;
+	}
+	.scenario-options button > span:last-child {
+		display: grid;
+		gap: 4px;
+		min-width: 0;
+	}
+	.scenario-options strong {
+		font-size: 12px;
+	}
+	.scenario-options small {
+		color: #89877f;
+		font-size: 10px;
+		line-height: 1.35;
+		overflow-wrap: anywhere;
 	}
 	.hero-actions {
 		display: flex;
@@ -954,7 +1324,12 @@
 		gap: 9px;
 		font-weight: 700;
 		border-radius: 4px;
-		transition: 0.2s ease;
+		transition:
+			background-color 0.2s ease,
+			border-color 0.2s ease,
+			color 0.2s ease,
+			transform 0.2s ease,
+			box-shadow 0.2s ease;
 	}
 	.primary-button {
 		min-height: 52px;
@@ -989,6 +1364,10 @@
 	.text-button:hover {
 		color: var(--blue);
 	}
+	.text-button:disabled {
+		opacity: 0.55;
+		cursor: wait;
+	}
 	.wide {
 		width: 100%;
 	}
@@ -999,6 +1378,41 @@
 		gap: 7px;
 		align-items: center;
 		margin-top: 18px;
+	}
+	.boundary-note {
+		max-width: 520px;
+		margin: 10px 0 0;
+		color: #aaa79f;
+		font-size: 10px;
+		line-height: 1.5;
+	}
+	.inline-status {
+		width: fit-content;
+		max-width: 100%;
+		display: flex;
+		align-items: flex-start;
+		gap: 8px;
+		margin-top: 14px;
+		padding: 10px 12px;
+		border: 1px solid #d9e1dc;
+		border-radius: 4px;
+		background: #eef2ee;
+		color: #5e6d64;
+		font-size: 11px;
+		line-height: 1.5;
+	}
+	.inline-status.error {
+		border-color: #ead3cb;
+		background: #f8e9e4;
+		color: #82493d;
+	}
+	.inline-status :global(svg) {
+		flex: none;
+		margin-top: 1px;
+	}
+	.spinner {
+		display: inline-flex;
+		animation: spin 0.9s linear infinite;
 	}
 	.hero-visual {
 		position: relative;
@@ -1031,13 +1445,13 @@
 		gap: 7px;
 	}
 	.preview-toolbar > span {
-		font-size: 11px;
+		font-size: 12px;
 		font-weight: 750;
 		letter-spacing: 0.02em;
 	}
 	.preview-toolbar small {
 		color: #728078;
-		font-size: 9px;
+		font-size: 10px;
 		letter-spacing: 0.06em;
 		text-transform: uppercase;
 	}
@@ -1073,7 +1487,7 @@
 		border-radius: 4px;
 		background: rgba(31, 36, 34, 0.72);
 		color: white;
-		font-size: 9px;
+		font-size: 10px;
 		letter-spacing: 0.03em;
 		backdrop-filter: blur(8px);
 	}
@@ -1097,7 +1511,7 @@
 	}
 	.preview-summary > div:last-child span {
 		color: #89877f;
-		font-size: 9px;
+		font-size: 10px;
 		line-height: 1.4;
 	}
 	.preview-score {
@@ -1131,7 +1545,7 @@
 	}
 	.how-it-works > p,
 	.card-label {
-		font-size: 9px;
+		font-size: 10px;
 		font-weight: 800;
 		letter-spacing: 0.18em;
 		color: #98958d;
@@ -1164,10 +1578,10 @@
 			serif;
 	}
 	.how-it-works article strong {
-		font-size: 12px;
+		font-size: 13px;
 	}
 	.how-it-works article small {
-		font-size: 10px;
+		font-size: 11px;
 		color: #95938c;
 		margin-top: 4px;
 	}
@@ -1188,6 +1602,25 @@
 	}
 	.workspace-title .eyebrow {
 		justify-content: center;
+	}
+	.context-pill {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: fit-content;
+		margin: -6px auto 14px;
+		padding: 6px 9px;
+		border: 1px solid #ccd8d1;
+		border-radius: 999px;
+		background: #edf2ed;
+		color: #567064;
+		font-size: 9px;
+		font-weight: 800;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+	}
+	.analyzing-screen .context-pill {
+		margin-top: -7px;
 	}
 	.workspace-title h2,
 	.result-heading h2,
@@ -1336,7 +1769,7 @@
 		color: #7e817c;
 	}
 	.quality-panel > p {
-		font-size: 9px;
+		font-size: 10px;
 		font-weight: 800;
 		letter-spacing: 0.18em;
 		color: #98958d;
@@ -1367,20 +1800,20 @@
 	}
 	.quality-item strong {
 		display: block;
-		font-size: 12px;
+		font-size: 13px;
 		margin: 2px 0 5px;
 	}
 	.quality-item small {
 		display: block;
 		color: #97948c;
-		font-size: 9px;
+		font-size: 11px;
 		line-height: 1.4;
 	}
 	.quality-item em {
 		font-family: inherit;
 		font-style: normal;
 		color: #8f8c84;
-		font-size: 9px;
+		font-size: 10px;
 		margin-top: 4px;
 	}
 	.camera-tip {
@@ -1396,7 +1829,7 @@
 		color: #617a6d;
 	}
 	.camera-tip p {
-		font-size: 9px;
+		font-size: 11px;
 		line-height: 1.55;
 		margin: 0;
 	}
@@ -1415,7 +1848,7 @@
 		gap: 6px;
 		margin: 3px 0 0;
 		color: #9a978f;
-		font-size: 8px;
+		font-size: 10px;
 		letter-spacing: 0.03em;
 	}
 	.review-card {
@@ -1464,14 +1897,19 @@
 	}
 	.review-check small {
 		color: #929087;
-		font-size: 10px;
+		font-size: 11px;
 		margin-top: 5px;
+		line-height: 1.45;
+	}
+	.review-check .prepared-note {
+		color: #5e7868;
+		font-weight: 650;
 	}
 	.review-copy ul {
 		padding: 17px 0 17px 18px;
 		margin: 0;
 		color: #66655f;
-		font-size: 11px;
+		font-size: 12px;
 		line-height: 2;
 	}
 	.review-actions {
@@ -1489,7 +1927,7 @@
 		padding: 12px;
 		background: #f8e9e4;
 		color: #8a4c3e;
-		font-size: 10px;
+		font-size: 11px;
 		line-height: 1.5;
 		margin-bottom: 9px;
 	}
@@ -1539,7 +1977,7 @@
 		justify-content: space-between;
 		margin-top: 18px;
 		color: #aaa69d;
-		font-size: 9px;
+		font-size: 10px;
 		letter-spacing: 0.06em;
 	}
 	.analysis-steps span {
@@ -1554,6 +1992,14 @@
 		color: var(--blue);
 		font-weight: 700;
 	}
+	.cancel-analysis {
+		margin-top: 24px;
+		font-size: 12px;
+	}
+	.panel-status {
+		width: 100%;
+		margin: 15px 0 4px;
+	}
 	@keyframes progress {
 		0% {
 			transform: translateX(-110%);
@@ -1561,6 +2007,11 @@
 		60%,
 		100% {
 			transform: translateX(280%);
+		}
+	}
+	@keyframes spin {
+		to {
+			transform: rotate(360deg);
 		}
 	}
 	.result-workspace {
@@ -1583,10 +2034,27 @@
 		flex-wrap: wrap;
 		max-width: 290px;
 	}
+	.context-badge {
+		min-width: 110px;
+		display: grid;
+		gap: 2px;
+		padding: 8px 10px;
+		border: 1px solid #c8d3db;
+		border-radius: 2px;
+		background: #edf2f4;
+		color: #3f6273;
+		font-size: 11px;
+		font-weight: 750;
+	}
+	.context-badge small {
+		font-size: 7px;
+		letter-spacing: 0.12em;
+		color: #7e929c;
+	}
 	.source-badge {
 		display: inline-flex;
 		align-items: center;
-		font-size: 8px;
+		font-size: 9px;
 		font-weight: 750;
 		letter-spacing: 0.09em;
 		text-transform: uppercase;
@@ -1597,7 +2065,7 @@
 		border-radius: 2px;
 	}
 	.demo-badge {
-		font-size: 8px;
+		font-size: 9px;
 		letter-spacing: 0.13em;
 		border: 1px solid #d2c6a7;
 		background: #fbf3dd;
@@ -1635,7 +2103,7 @@
 	.score-journey > div > span,
 	.projected-score span {
 		display: block;
-		font-size: 8px;
+		font-size: 9px;
 		font-weight: 700;
 		letter-spacing: 0.1em;
 		text-transform: uppercase;
@@ -1693,7 +2161,7 @@
 		margin-top: 9px;
 	}
 	.score-card p {
-		font-size: 9px;
+		font-size: 10px;
 		line-height: 1.5;
 		color: #99968e;
 		margin: 0;
@@ -1708,7 +2176,7 @@
 		align-items: center;
 		gap: 10px;
 		margin: 15px 0;
-		font-size: 10px;
+		font-size: 11px;
 	}
 	.metric-row > div {
 		height: 4px;
@@ -1751,13 +2219,57 @@
 			serif;
 	}
 	.tone-card span {
-		font-size: 9px;
+		font-size: 10px;
 		color: #85827b;
 		margin: 5px 0;
 	}
 	.tone-card small {
-		font-size: 8px;
+		font-size: 9px;
 		color: #aaa69d;
+	}
+	.tone-note {
+		grid-column: 1/3;
+		margin: 16px 0 0;
+		padding-top: 13px;
+		border-top: 1px solid #ebe8df;
+		color: #7f7d76;
+		font-size: 10px;
+		line-height: 1.5;
+	}
+	.moment-section {
+		margin-top: 18px;
+		padding: 30px;
+		border: 1px solid #cedbd3;
+		background: #edf2ed;
+	}
+	.moment-section ol {
+		margin: 0;
+		padding: 0;
+		list-style: none;
+		display: grid;
+		grid-template-columns: repeat(3, 1fr);
+	}
+	.moment-section li {
+		min-height: 84px;
+		padding: 22px 20px 0 0;
+		display: grid;
+		grid-template-columns: 28px 1fr;
+		gap: 9px;
+		align-items: start;
+	}
+	.moment-section li + li {
+		padding-left: 20px;
+		border-left: 1px solid #ced8d1;
+	}
+	.moment-section li span {
+		color: #6d8a7b;
+		font:
+			600 11px Georgia,
+			serif;
+	}
+	.moment-section li strong {
+		font-size: 12px;
+		line-height: 1.55;
 	}
 	.analysis-section {
 		margin-top: 18px;
@@ -1781,7 +2293,7 @@
 		align-items: center;
 		justify-content: space-between;
 		gap: 10px;
-		font-size: 9px;
+		font-size: 10px;
 		font-weight: 750;
 		letter-spacing: 0.05em;
 		color: #77756f;
@@ -1799,7 +2311,7 @@
 		margin: 15px 0 8px;
 	}
 	.analysis-grid p {
-		font-size: 9px;
+		font-size: 11px;
 		line-height: 1.6;
 		color: #85837c;
 		margin: 0;
@@ -1827,7 +2339,7 @@
 		margin: 0;
 	}
 	.section-heading > span {
-		font-size: 9px;
+		font-size: 10px;
 		color: #92918a;
 	}
 	.guidance-grid {
@@ -1852,7 +2364,7 @@
 	}
 	.guidance-grid small {
 		color: #708a7d;
-		font-size: 7px;
+		font-size: 9px;
 		letter-spacing: 0.12em;
 		font-weight: 800;
 	}
@@ -1874,7 +2386,7 @@
 	}
 	.guidance-grid p {
 		color: #74736d;
-		font-size: 9px;
+		font-size: 11px;
 		line-height: 1.6;
 		margin: 0;
 	}
@@ -2000,6 +2512,15 @@
 		color: #4f6c5c;
 		margin: 4px 0;
 	}
+	.readiness-card strong,
+	.preview-score strong,
+	.score-circle strong,
+	.projected-score strong,
+	.metric-row strong,
+	.analysis-card-head strong,
+	.outcome-score strong {
+		font-variant-numeric: tabular-nums;
+	}
 	.comparison-outcome h3 {
 		font:
 			600 17px Georgia,
@@ -2054,11 +2575,301 @@
 		font-size: 8px;
 		letter-spacing: 0.1em;
 	}
+	.footer-links {
+		display: flex;
+		align-items: center;
+		gap: 14px;
+	}
+	.footer-links a {
+		color: #65717b;
+		font-size: 9px;
+		font-weight: 700;
+		text-underline-offset: 3px;
+	}
+
+	/* Calm, practical product language: flat surfaces, restrained color, sans-serif hierarchy. */
+	.site-header {
+		background: var(--cream);
+	}
+	.brand {
+		font: 700 16px/1 inherit;
+		letter-spacing: -0.01em;
+	}
+	.brand-mark {
+		width: 32px;
+		height: 32px;
+		border: 1px solid #7d8993;
+		border-radius: 7px;
+		background: transparent;
+		color: var(--ink);
+		font-size: 13px;
+	}
+	.hero {
+		min-height: 700px;
+		padding-top: 64px;
+		gap: 64px;
+	}
+	.eyebrow {
+		margin-bottom: 16px;
+		color: #5f6e79;
+		font-size: 10px;
+		letter-spacing: 0.09em;
+	}
+	.eyebrow span {
+		display: none;
+	}
+	.hero h1 {
+		max-width: 620px;
+		font-family: inherit;
+		font-size: clamp(42px, 4.7vw, 60px);
+		font-weight: 700;
+		line-height: 1.08;
+		letter-spacing: -0.045em;
+	}
+	.hero h1 em {
+		color: var(--ink);
+	}
+	.hero-description {
+		max-width: 600px;
+		margin-top: 22px;
+		font-size: 15px;
+		line-height: 1.65;
+	}
+	.scenario-picker {
+		margin-top: 24px;
+	}
+	.scenario-picker > p,
+	.how-it-works > p,
+	.card-label {
+		color: #64717b;
+		font-size: 10px;
+		letter-spacing: 0.08em;
+	}
+	.scenario-options {
+		gap: 10px;
+	}
+	.scenario-options button {
+		min-height: 88px;
+		border-color: var(--line);
+		border-radius: 8px;
+		background: #fff;
+		transition:
+			border-color 0.18s ease,
+			background-color 0.18s ease,
+			box-shadow 0.18s ease;
+	}
+	.scenario-options button:hover {
+		border-color: #9aa8b4;
+		background: #fafbfc;
+		transform: none;
+	}
+	.scenario-options button.active {
+		border-color: #8fa9bf;
+		background: #f4f8fb;
+		box-shadow: inset 3px 0 0 var(--blue);
+	}
+	.scenario-icon {
+		width: 32px;
+		height: 32px;
+		border-radius: 6px;
+		background: #f0f2f4;
+		color: #65717b;
+	}
+	.scenario-options button.active .scenario-icon {
+		background: #e4edf4;
+		color: var(--blue);
+	}
+	.scenario-options strong {
+		font-size: 13px;
+	}
+	.scenario-options small {
+		font-size: 10px;
+	}
+	.hero-actions {
+		margin-top: 28px;
+	}
+	.primary-button,
+	.secondary-button,
+	.text-button {
+		border-radius: 8px;
+	}
+	.primary-button {
+		box-shadow: none;
+	}
+	.primary-button:hover {
+		transform: none;
+	}
+	.boundary-note {
+		color: #89939c;
+		font-size: 10px;
+	}
+	.preview-window {
+		border-color: #cfd5da;
+		border-radius: 12px;
+		box-shadow: 0 10px 28px rgba(31, 41, 51, 0.08);
+	}
+	.preview-toolbar,
+	.preview-summary {
+		background: #fff;
+	}
+	.frame-status {
+		border: 0;
+		border-radius: 6px;
+		background: rgba(31, 41, 51, 0.88);
+		backdrop-filter: none;
+	}
+	.preview-summary > div:last-child strong,
+	.preview-score strong {
+		font-family: inherit;
+		font-weight: 700;
+	}
+	.how-it-works {
+		background: #fff;
+	}
+	.how-it-works article span {
+		border-color: #c3cbd2;
+		border-radius: 6px;
+		color: #53616c;
+		font-family: inherit;
+		font-weight: 700;
+	}
+	.workspace-title h2,
+	.result-heading h2,
+	.analyzing-screen h2 {
+		font-family: inherit;
+		font-weight: 700;
+		letter-spacing: -0.035em;
+	}
+	.context-pill {
+		border-color: #ccd5dc;
+		border-radius: 5px;
+		background: #fff;
+		color: #536979;
+	}
+	.camera-layout,
+	.review-card {
+		overflow: hidden;
+		border-radius: 12px;
+		box-shadow: none;
+	}
+	.quality-panel {
+		background: #fff;
+	}
+	.readiness-card {
+		border-color: #dce2e7;
+		background: #f4f6f8;
+	}
+	.readiness-card strong,
+	.review-check strong {
+		font-family: inherit;
+		font-weight: 700;
+	}
+	.camera-tip {
+		border-left: 3px solid #8aa2b4;
+		background: #f3f6f8;
+	}
+	.quality-message,
+	.comparison-tag {
+		backdrop-filter: none;
+	}
+	.report-loader {
+		width: 72px;
+		height: 72px;
+		border-radius: 12px;
+		background: #fff;
+	}
+	.result-heading h2 {
+		font-size: 38px;
+	}
+	.result-heading h2 em {
+		color: #536979;
+	}
+	.context-badge,
+	.source-badge,
+	.demo-badge {
+		border-radius: 6px;
+	}
+	.source-badge {
+		text-transform: none;
+		letter-spacing: 0.04em;
+	}
+	.result-grid > article,
+	.analysis-section,
+	.guidance-section,
+	.moment-section {
+		border-radius: 8px;
+	}
+	.score-circle {
+		width: 92px;
+		height: 72px;
+		border: 1px solid #d9e0e5;
+		border-radius: 7px;
+		background: #f6f8f9;
+	}
+	.score-circle:after {
+		display: none;
+	}
+	.score-circle strong,
+	.projected-score strong,
+	.metric-row strong,
+	.analysis-card-head strong,
+	.outcome-score strong {
+		font-family: inherit;
+		font-weight: 700;
+	}
+	.projected-score {
+		border-color: #d8e0e5;
+		border-radius: 7px;
+		background: #eef3f6;
+	}
+	.tone-swatch {
+		border-radius: 8px;
+		box-shadow: none;
+	}
+	.tone-card strong,
+	.moment-section li span,
+	.analysis-grid h4,
+	.section-heading h3,
+	.guidance-grid article > span,
+	.guidance-grid h4,
+	.comparison-outcome h3,
+	footer span {
+		font-family: inherit;
+	}
+	.moment-section {
+		border-color: #d4dce2;
+		border-left: 3px solid var(--blue);
+		background: #fff;
+	}
+	.analysis-section {
+		background: #fff;
+	}
+	.guidance-section {
+		border-color: #dce1e5;
+		background: #f5f7f8;
+	}
+	.comparison-workspace em {
+		font-style: normal;
+	}
+	.comparison-stage {
+		border: 1px solid #d5dce1;
+		border-radius: 10px;
+		box-shadow: none;
+	}
+	.comparison-outcome {
+		border-color: #d8e0e5;
+		border-radius: 8px;
+		background: #f2f5f7;
+	}
 	@media (max-width: 900px) {
 		.hero {
 			grid-template-columns: 1fr;
 			gap: 25px;
 			padding-top: 48px;
+		}
+		.hero-copy {
+			max-width: 680px;
+			margin: auto;
 		}
 		.hero-visual {
 			min-height: 500px;
@@ -2077,6 +2888,7 @@
 		.quality-panel > p,
 		.quality-panel > .readiness-card,
 		.quality-panel > .camera-tip,
+		.quality-panel > .panel-status,
 		.quality-panel > button,
 		.quality-panel > .device-note {
 			grid-column: 1/3;
@@ -2092,6 +2904,19 @@
 		}
 		.guidance-grid {
 			grid-template-columns: 1fr;
+		}
+		.moment-section ol {
+			grid-template-columns: 1fr;
+		}
+		.moment-section li,
+		.moment-section li + li {
+			min-height: 0;
+			padding: 18px 0;
+			border-left: 0;
+			border-top: 1px solid #ced8d1;
+		}
+		.moment-section li:first-child {
+			border-top: 0;
 		}
 		.analysis-grid {
 			grid-template-columns: 1fr 1fr;
@@ -2129,14 +2954,11 @@
 		.site-header.compact {
 			height: 62px;
 		}
-		.privacy-note span {
+		.privacy-note {
 			display: none;
 		}
 		.header-actions {
 			gap: 10px;
-		}
-		.language-switch button {
-			padding: 0 7px;
 		}
 		.site-header.compact .brand > span:last-child {
 			display: none;
@@ -2145,15 +2967,40 @@
 			padding: 45px 20px;
 		}
 		.hero h1 {
-			font-size: 46px;
+			font-size: clamp(38px, 10.8vw, 42px);
+			line-height: 1.12;
 		}
-		.hero-description br {
-			display: none;
+		.hero-description span {
+			display: inline;
+		}
+		.hero-description span + span::before {
+			content: ' ';
+		}
+		.scenario-picker {
+			margin-top: 23px;
+		}
+		.scenario-options {
+			gap: 7px;
+		}
+		.scenario-options button {
+			min-height: 104px;
+			padding: 10px;
+			grid-template-columns: 1fr;
+			gap: 7px;
+			align-content: start;
+		}
+		.scenario-icon {
+			width: 30px;
+			height: 30px;
+		}
+		.scenario-options small {
+			font-size: 10px;
 		}
 		.hero-actions {
 			align-items: stretch;
 			flex-direction: column;
 			gap: 8px;
+			margin-top: 25px;
 		}
 		.hero-visual {
 			min-height: 465px;
@@ -2173,6 +3020,10 @@
 		.how-it-works > div {
 			display: grid;
 			gap: 18px;
+			justify-content: stretch;
+		}
+		.how-it-works article {
+			width: 100%;
 		}
 		.how-it-works > div > i {
 			display: none;
@@ -2212,6 +3063,9 @@
 			grid-column: auto;
 		}
 		.guidance-section {
+			padding: 22px 18px;
+		}
+		.moment-section {
 			padding: 22px 18px;
 		}
 		.analysis-section {
@@ -2279,6 +3133,19 @@
 		}
 		.steps i {
 			width: 25px;
+		}
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.skip-link,
+		.primary-button,
+		.secondary-button,
+		.text-button,
+		.readiness-track i {
+			transition: none;
+		}
+		.progress-track i,
+		.spinner {
+			animation: none;
 		}
 	}
 </style>
