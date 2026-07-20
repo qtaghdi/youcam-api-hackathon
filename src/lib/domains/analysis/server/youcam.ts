@@ -23,7 +23,7 @@ const skinFeature: Feature = {
 	slug: 'skin-analysis',
 	payload: (src_file_id) => ({
 		src_file_id,
-		dst_actions: ['radiance', 'texture', 'redness', 'dark_circle', 'pore'],
+		dst_actions: ['radiance', 'texture', 'redness', 'dark_circle_v2', 'pore'],
 		miniserver_args: { enable_mask_overlay: false },
 		format: 'json',
 		pf_camera_kit: false
@@ -33,7 +33,7 @@ const skinFeature: Feature = {
 const toneFeature: Feature = {
 	version: 'v2.0',
 	slug: 'skin-tone-analysis',
-	payload: (src_file_id) => ({ src_file_id, face_angle_strictness_level: 'high' })
+	payload: (src_file_id) => ({ src_file_id, face_angle_strictness_level: 'medium' })
 };
 
 function asObject(value: unknown): JsonObject {
@@ -92,12 +92,25 @@ async function uploadForFeature(file: File, feature: Feature) {
 		throw new Error('YouCam did not return a valid upload URL.');
 	}
 
+	const uploadHeaders = new Headers();
+	for (const [name, value] of Object.entries(asObject(uploadRequest.headers))) {
+		if (typeof value === 'string' || typeof value === 'number') {
+			uploadHeaders.set(name, String(value));
+		}
+	}
+	if (!uploadHeaders.has('Content-Type')) uploadHeaders.set('Content-Type', file.type);
+
 	const upload = await fetch(uploadUrl, {
 		method: typeof uploadRequest.method === 'string' ? uploadRequest.method : 'PUT',
-		headers: { 'Content-Type': file.type },
+		headers: uploadHeaders,
 		body: file
 	});
-	if (!upload.ok) throw new Error(`The image upload failed. (${upload.status})`);
+	if (!upload.ok) {
+		const detail = (await upload.text().catch(() => '')).trim();
+		throw new Error(
+			`The image upload failed. (${upload.status})${detail ? ` ${detail.slice(0, 240)}` : ''}`
+		);
+	}
 
 	return fileId;
 }

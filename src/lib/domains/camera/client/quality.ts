@@ -18,7 +18,8 @@ async function createLandmarker() {
 			numFaces: 1,
 			minFaceDetectionConfidence: 0.55,
 			minFacePresenceConfidence: 0.55,
-			minTrackingConfidence: 0.5
+			minTrackingConfidence: 0.5,
+			outputFacialTransformationMatrixes: true
 		});
 	} catch {
 		return null;
@@ -67,7 +68,23 @@ function backgroundLevel(context: CanvasRenderingContext2D, width: number, heigh
 	return deviation <= 0.21 ? 'good' : 'warning';
 }
 
-function faceGeometry(landmarks: NormalizedLandmark[], video: HTMLVideoElement) {
+export function faceRotationDegrees(data: number[]) {
+	if (data.length < 11 || data.slice(0, 11).some((value) => !Number.isFinite(value))) return null;
+
+	// MediaPipe returns a flattened, column-major 4×4 face transformation matrix.
+	const radiansToDegrees = 180 / Math.PI;
+	return {
+		pitch: Math.atan2(data[6], data[10]) * radiansToDegrees,
+		yaw: Math.atan2(-data[2], Math.hypot(data[6], data[10])) * radiansToDegrees,
+		roll: Math.atan2(data[1], data[0]) * radiansToDegrees
+	};
+}
+
+function faceGeometry(
+	landmarks: NormalizedLandmark[],
+	video: HTMLVideoElement,
+	transformationMatrix: number[] | undefined
+) {
 	const xs = landmarks.map((point) => point.x);
 	const ys = landmarks.map((point) => point.y);
 	const minX = Math.min(...xs);
@@ -93,7 +110,11 @@ function faceGeometry(landmarks: NormalizedLandmark[], video: HTMLVideoElement) 
 	const rightSpan = Math.abs(rightCheek.x - nose.x);
 	const symmetry = Math.min(leftSpan, rightSpan) / Math.max(leftSpan, rightSpan);
 	const levelEyes = Math.abs(leftEye.y - rightEye.y) < 0.045;
-	const frontal = symmetry > 0.72 && levelEyes;
+	const rotation = transformationMatrix ? faceRotationDegrees(transformationMatrix) : null;
+	const poseWithinRange =
+		!rotation ||
+		(Math.abs(rotation.pitch) <= 9 && Math.abs(rotation.yaw) <= 9 && Math.abs(rotation.roll) <= 9);
+	const frontal = symmetry > 0.72 && levelEyes && poseWithinRange;
 
 	return { centered, sized, frontal };
 }
@@ -132,7 +153,8 @@ export async function inspectFrame(video: HTMLVideoElement): Promise<CameraQuali
 	}
 
 	try {
-		const [landmarks] = landmarker.detectForVideo(video, performance.now()).faceLandmarks;
+		const detection = landmarker.detectForVideo(video, performance.now());
+		const [landmarks] = detection.faceLandmarks;
 		if (!landmarks) {
 			return {
 				face: 'warning',
@@ -144,7 +166,11 @@ export async function inspectFrame(video: HTMLVideoElement): Promise<CameraQuali
 			};
 		}
 
-		const geometry = faceGeometry(landmarks, video);
+		const geometry = faceGeometry(
+			landmarks,
+			video,
+			detection.facialTransformationMatrixes[0]?.data
+		);
 		const position: QualityLevel =
 			geometry.centered && geometry.sized && geometry.frontal ? 'good' : 'warning';
 		const ready = position === 'good' && lighting === 'good' && background === 'good';

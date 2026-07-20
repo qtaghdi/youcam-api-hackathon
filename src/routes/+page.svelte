@@ -56,6 +56,7 @@
 	let analysisError = $state('');
 	let uploadError = $state('');
 	let isPreparingImage = $state(false);
+	let analysisPhase = $state<0 | 1 | 2>(0);
 	let preparedImage = $state<{
 		originalBytes: number;
 		preparedBytes: number;
@@ -63,6 +64,7 @@
 	} | null>(null);
 	let stageHeading = $state<HTMLHeadingElement>();
 	let analysisController: AbortController | null = null;
+	let analysisTimers: ReturnType<typeof setTimeout>[] = [];
 	let qualityCheckInFlight = false;
 	let quality = $state<CameraQuality>({
 		face: 'unknown',
@@ -100,6 +102,10 @@
 				(quality.background === 'good' ? 20 : quality.background === 'warning' ? 7 : 11)
 		)
 	);
+	const captureReady = $derived(
+		quality.face === 'good' && quality.position === 'good' && quality.lighting === 'good'
+	);
+	const analysisProgress = $derived([24, 58, 84][analysisPhase]);
 	const expectedGain = $derived(
 		result
 			? Math.min(
@@ -204,7 +210,10 @@
 		if (isScenario(savedScenario)) scenario = savedScenario;
 		document.documentElement.lang = locale;
 		previousCapture = readBeforeCapture();
-		return () => stopCamera();
+		return () => {
+			stopCamera();
+			clearAnalysisTimers();
+		};
 	});
 
 	function setLocale(nextLocale: Locale) {
@@ -428,6 +437,12 @@
 		if (!captureFile) return;
 		analysisError = '';
 		analysisController?.abort();
+		clearAnalysisTimers();
+		analysisPhase = 0;
+		analysisTimers = [
+			setTimeout(() => (analysisPhase = 1), 650),
+			setTimeout(() => (analysisPhase = 2), 3_800)
+		];
 		const controller = new AbortController();
 		analysisController = controller;
 		await changeStage('analyzing');
@@ -456,12 +471,19 @@
 			analysisError = error instanceof Error ? error.message : copy.review.errors.interrupted;
 			await changeStage('review');
 		} finally {
+			clearAnalysisTimers();
 			if (analysisController === controller) analysisController = null;
 		}
 	}
 
+	function clearAnalysisTimers() {
+		analysisTimers.forEach((timer) => clearTimeout(timer));
+		analysisTimers = [];
+	}
+
 	async function cancelAnalysis() {
 		analysisController?.abort();
+		clearAnalysisTimers();
 		analysisController = null;
 		analysisError = '';
 		await changeStage('review');
@@ -765,7 +787,7 @@
 						type="button"
 						class="primary-button wide"
 						onclick={capturePhoto}
-						disabled={!stream || isPreparingImage}
+						disabled={!stream || isPreparingImage || !captureReady}
 						><Camera size={18} /> {copy.camera.capture}</button
 					>
 					<button
@@ -817,18 +839,44 @@
 		</section>
 	{:else if stage === 'analyzing'}
 		<section class="analyzing-screen" role="status" aria-live="polite" aria-busy="true">
-			<div class="report-loader"><ScanFace size={34} /></div>
-			<p class="eyebrow"><span></span> {copy.analyzing.eyebrow}</p>
-			<span class="context-pill">{scenarioCopy.label}</span>
-			<h2 class="stage-heading" bind:this={stageHeading} tabindex="-1">{copy.analyzing.title}</h2>
-			<p>
-				{copy.analyzing.body}<br />{copy.analyzing.timing}
-			</p>
-			<div class="progress-track"><i></i></div>
-			<div class="analysis-steps">
-				<span class="done"><Check size={15} /> {copy.analyzing.prepared}</span><span class="active"
-					><ScanFace size={15} /> {copy.analyzing.appearance}</span
-				><span>{copy.analyzing.actions}</span>
+			<div class="analysis-progress-card">
+				<div class="analysis-preview" aria-hidden="true">
+					<img src={captureUrl} alt="" width="1080" height="1350" />
+					<i></i>
+				</div>
+				<div class="analysis-progress-copy">
+					<p class="eyebrow"><span></span> {copy.analyzing.eyebrow}</p>
+					<span class="context-pill">{scenarioCopy.label}</span>
+					<h2 class="stage-heading" bind:this={stageHeading} tabindex="-1">
+						{copy.analyzing.title}
+					</h2>
+					<p>{copy.analyzing.body}</p>
+					<div
+						class="progress-track"
+						role="progressbar"
+						aria-label={copy.analyzing.title}
+						aria-valuemin="0"
+						aria-valuemax="100"
+						aria-valuenow={analysisProgress}
+					>
+						<i style={`width:${analysisProgress}%`}></i>
+					</div>
+					<ol class="analysis-steps">
+						{#each [copy.analyzing.prepared, copy.analyzing.appearance, copy.analyzing.actions] as item, index (item)}
+							<li
+								class:done={index < analysisPhase}
+								class:active={index === analysisPhase}
+								aria-current={index === analysisPhase ? 'step' : undefined}
+							>
+								<span
+									>{#if index < analysisPhase}<Check size={13} />{:else}{index + 1}{/if}</span
+								>
+								{item}
+							</li>
+						{/each}
+					</ol>
+					<small>{copy.analyzing.timing}</small>
+				</div>
 			</div>
 			<button type="button" class="text-button cancel-analysis" onclick={cancelAnalysis}>
 				{copy.analyzing.cancel}
@@ -1651,8 +1699,7 @@
 		margin: 0;
 	}
 	.workspace-title > p:last-child,
-	.result-heading > div > p:last-child,
-	.analyzing-screen > p {
+	.result-heading > div > p:last-child {
 		color: var(--muted);
 		font-size: 14px;
 		line-height: 1.7;
@@ -1958,74 +2005,148 @@
 		display: grid;
 		place-content: center;
 		justify-items: center;
-		text-align: center;
-		padding: 40px;
+		padding: 56px 32px;
 	}
-	.report-loader {
-		width: 104px;
-		height: 104px;
-		border: 1px solid #cbd4cf;
-		border-radius: 50%;
+	.analysis-progress-card {
+		width: min(760px, calc(100vw - 48px));
 		display: grid;
-		place-items: center;
-		color: var(--blue);
+		grid-template-columns: 210px minmax(0, 1fr);
+		gap: 42px;
+		align-items: center;
+		padding: 26px;
+		border: 1px solid var(--line);
+		background: rgba(255, 255, 255, 0.82);
+		box-shadow: 0 22px 65px rgba(51, 52, 48, 0.08);
+	}
+	.analysis-preview {
+		aspect-ratio: 4 / 5;
 		position: relative;
-		margin-bottom: 36px;
-		background: #f0f3f0;
+		overflow: hidden;
+		background: #e8ece9;
+	}
+	.analysis-preview img {
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+		filter: saturate(0.82);
+	}
+	.analysis-preview::after {
+		content: '';
+		position: absolute;
+		inset: 0;
+		border: 1px solid rgba(255, 255, 255, 0.68);
+		box-shadow: inset 0 0 0 10px rgba(242, 244, 241, 0.08);
+	}
+	.analysis-preview i {
+		position: absolute;
+		z-index: 1;
+		left: 10px;
+		right: 10px;
+		top: 18%;
+		height: 1px;
+		background: rgba(255, 255, 255, 0.9);
+		box-shadow: 0 0 18px rgba(255, 255, 255, 0.75);
+		animation: scan-photo 3s ease-in-out infinite;
+	}
+	.analysis-progress-copy {
+		min-width: 0;
+		text-align: left;
 	}
 	.analyzing-screen .eyebrow {
-		margin-top: 4px;
+		justify-content: flex-start;
+		margin: 0 0 14px;
+	}
+	.analyzing-screen .context-pill {
+		margin: 0 0 14px;
+	}
+	.analyzing-screen h2 {
+		font-size: clamp(32px, 4vw, 44px);
+	}
+	.analysis-progress-copy > p:not(.eyebrow) {
+		max-width: 420px;
+		margin: 13px 0 0;
+		color: var(--muted);
+		font-size: 13px;
+		line-height: 1.65;
 	}
 	.progress-track {
-		width: 340px;
-		height: 2px;
+		width: 100%;
+		height: 3px;
 		background: #dedbd3;
-		margin-top: 38px;
+		margin-top: 28px;
 		overflow: hidden;
 	}
 	.progress-track i {
 		display: block;
-		width: 42%;
 		height: 100%;
 		background: var(--blue);
-		animation: progress 2.2s ease-in-out infinite;
+		transition: width 700ms ease;
 	}
 	.analysis-steps {
-		display: flex;
-		width: 400px;
-		justify-content: space-between;
-		margin-top: 18px;
-		color: #aaa69d;
+		display: grid;
+		grid-template-columns: repeat(3, 1fr);
+		gap: 10px;
+		padding: 0;
+		margin: 16px 0 0;
+		list-style: none;
+		color: #a19e96;
 		font-size: 10px;
-		letter-spacing: 0.06em;
+		letter-spacing: 0.04em;
 	}
-	.analysis-steps span {
+	.analysis-steps li {
 		display: flex;
 		align-items: center;
 		gap: 5px;
 	}
+	.analysis-steps li > span {
+		width: 18px;
+		height: 18px;
+		display: grid;
+		flex: none;
+		place-items: center;
+		border: 1px solid #d5d2ca;
+		border-radius: 50%;
+		font-size: 9px;
+	}
 	.analysis-steps .done {
 		color: #738a79;
+	}
+	.analysis-steps .done > span {
+		border-color: #a9b9af;
+		background: #edf2ed;
 	}
 	.analysis-steps .active {
 		color: var(--blue);
 		font-weight: 700;
 	}
+	.analysis-steps .active > span {
+		border-color: #91abc0;
+		background: #edf3f7;
+	}
+	.analysis-progress-copy > small {
+		display: block;
+		margin-top: 19px;
+		color: #8c8982;
+		font-size: 10px;
+		line-height: 1.5;
+	}
 	.cancel-analysis {
-		margin-top: 24px;
+		margin-top: 18px;
 		font-size: 12px;
 	}
 	.panel-status {
 		width: 100%;
 		margin: 15px 0 4px;
 	}
-	@keyframes progress {
+	@keyframes scan-photo {
 		0% {
-			transform: translateX(-110%);
+			transform: translateY(0);
 		}
-		60%,
+		50% {
+			transform: translateY(155px);
+		}
 		100% {
-			transform: translateX(280%);
+			transform: translateY(0);
 		}
 	}
 	@keyframes spin {
@@ -2744,12 +2865,6 @@
 	.comparison-tag {
 		backdrop-filter: none;
 	}
-	.report-loader {
-		width: 72px;
-		height: 72px;
-		border-radius: 12px;
-		background: #fff;
-	}
 	.result-heading h2 {
 		font-size: 38px;
 	}
@@ -3091,11 +3206,24 @@
 		.analyzing-screen {
 			padding: 25px;
 		}
+		.analysis-progress-card {
+			width: min(100%, 520px);
+			grid-template-columns: 92px minmax(0, 1fr);
+			gap: 18px;
+			padding: 18px;
+		}
+		.analysis-preview {
+			align-self: start;
+		}
+		.analyzing-screen h2 {
+			font-size: 29px;
+		}
 		.progress-track {
-			width: 260px;
+			width: 100%;
 		}
 		.analysis-steps {
-			width: 290px;
+			grid-template-columns: 1fr;
+			gap: 7px;
 		}
 		.steps i {
 			width: 25px;

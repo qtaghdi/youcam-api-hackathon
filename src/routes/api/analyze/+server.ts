@@ -1,6 +1,8 @@
 import { json } from '@sveltejs/kit';
+import { dev } from '$app/environment';
 import type { RequestHandler } from './$types';
 import { MAX_IMAGE_BYTES, SUPPORTED_IMAGE_TYPES } from '$lib/domains/analysis/shared/contracts';
+import { getAnalysisInputErrorMessage } from '$lib/domains/analysis/shared/errors';
 import {
 	analyzeWithYouCam,
 	buildDemoAnalysis,
@@ -47,6 +49,11 @@ export const POST: RequestHandler = async ({ request }) => {
 		return json(result);
 	} catch (error) {
 		console.error('YouCam analysis failed', error);
-		return json({ message: errors.generic }, { status: 502 });
+		const detail = error instanceof Error ? error.message : String(error);
+		const inputMessage = getAnalysisInputErrorMessage(detail, locale);
+		if (inputMessage) {
+			return json({ code: detail, message: inputMessage }, { status: 422 });
+		}
+		return json({ message: dev && detail ? detail : errors.generic }, { status: 502 });
 	}
 };

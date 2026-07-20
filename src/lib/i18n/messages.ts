@@ -137,7 +137,7 @@ export const messages = {
 			face: 'Face visibility',
 			faceHelp: 'Keep your full face clearly visible',
 			framing: 'Framing & posture',
-			framingHelp: 'Fill roughly 60–80% of the guide',
+			framingHelp: 'Keep the camera at eye level and look straight ahead',
 			lighting: 'Lighting quality',
 			lightingHelp: 'Use soft, even light across your face',
 			background: 'Background readiness',
@@ -193,14 +193,14 @@ export const messages = {
 			}
 		},
 		analyzing: {
-			eyebrow: 'STEP 02 · PRESENCE REVIEW',
-			title: 'Building your Presence Report.',
-			body: 'Reviewing image clarity, color harmony, framing, and light.',
-			timing: 'This usually takes 15–60 seconds.',
-			prepared: 'Image prepared',
-			appearance: 'First-impression factors',
-			actions: 'Personalized actions',
-			cancel: 'Cancel & review photo'
+			eyebrow: 'STEP 02 · PHOTO REVIEW',
+			title: 'Preparing your report.',
+			body: 'Checking face position, lighting, skin tone, and image clarity.',
+			timing: 'Keep this tab open. This usually takes under a minute.',
+			prepared: 'Photo uploaded',
+			appearance: 'Visual review',
+			actions: 'Recommendations',
+			cancel: 'Cancel and review photo'
 		},
 		report: {
 			eyebrow: 'YOUR PRESENCE REPORT',
@@ -462,7 +462,7 @@ export const messages = {
 			face: '얼굴 선명도',
 			faceHelp: '얼굴 전체가 선명하게 보이도록 해주세요',
 			framing: '구도와 자세',
-			framingHelp: '가이드의 60–80% 정도를 채워주세요',
+			framingHelp: '카메라를 눈높이에 두고 렌즈를 정면으로 바라봐 주세요',
 			lighting: '조명 상태',
 			lightingHelp: '얼굴 전체에 부드럽고 고른 빛을 비춰주세요',
 			background: '배경 준비도',
@@ -518,13 +518,13 @@ export const messages = {
 			}
 		},
 		analyzing: {
-			eyebrow: '2단계 · 프레즌스 리뷰',
-			title: 'Presence 리포트를 만들고 있어요.',
-			body: '이미지 선명도와 컬러 조화, 구도, 조명을 확인하고 있습니다.',
-			timing: '보통 15–60초 정도 걸립니다.',
-			prepared: '이미지 준비 완료',
-			appearance: '첫인상 요소',
-			actions: '맞춤 개선 방법',
+			eyebrow: '2단계 · 사진 확인',
+			title: '리포트를 준비하고 있어요.',
+			body: '얼굴 위치와 조명, 피부 톤, 이미지 선명도를 확인하고 있습니다.',
+			timing: '이 탭을 열어두세요. 보통 1분 안에 완료됩니다.',
+			prepared: '사진 업로드',
+			appearance: '사진 확인',
+			actions: '추천 정리',
 			cancel: '취소하고 사진 확인'
 		},
 		report: {
