@@ -17,7 +17,7 @@ export const privacyMessages = {
 			description:
 				'This notice explains what Presence processes, when a photo leaves your device, which services help deliver the experience, and how you can remove locally saved data.',
 			effective: 'Effective July 20, 2026',
-			updated: 'Last updated July 20, 2026'
+			updated: 'Last updated July 21, 2026'
 		},
 		prototype: {
 			title: 'About this prototype',
@@ -57,7 +57,7 @@ export const privacyMessages = {
 				number: '02',
 				title: 'Data we process',
 				paragraphs: [
-					'The data involved depends on the feature you choose. Presence does not collect an account profile or use its own analytics tracker.'
+					'The data involved depends on the feature you choose. Presence does not collect an account profile. It uses Vercel Web Analytics to understand aggregate visits and site usage.'
 				],
 				items: [
 					{
@@ -79,6 +79,10 @@ export const privacyMessages = {
 					{
 						title: 'Hosting and request logs',
 						body: 'Our hosting provider may process IP address, request time, browser or device information, and diagnostic logs needed to deliver and secure the site.'
+					},
+					{
+						title: 'Usage analytics',
+						body: 'Vercel Web Analytics processes page URL, referrer, browser and device details, approximate location, and visit information. Presence does not send photos, camera frames, or report contents through this analytics integration.'
 					}
 				]
 			},
@@ -87,7 +91,7 @@ export const privacyMessages = {
 				number: '03',
 				title: 'Why and when we process it',
 				paragraphs: [
-					'We process data to provide the camera check you start, prepare the image, generate the report you request, remember your language and scenario, enable before-and-after comparison, and keep the service reliable and secure.',
+					'We process data to provide the camera check you start, prepare the image, generate the report you request, remember your language and scenario, enable before-and-after comparison, understand aggregate site usage, and keep the service reliable and secure.',
 					'Camera access requires your browser permission. Uploading or capturing a photo does not start remote analysis by itself; selecting “Build my report” starts the request. You can cancel before that step.',
 					'When API credentials are not configured, Presence returns a demo report and does not send the photo to YouCam. The prototype does not intentionally write uploaded photos to its own database or permanent file storage, and the Presence team does not use submitted photos or reports to train its own model.'
 				],
@@ -107,7 +111,7 @@ export const privacyMessages = {
 					},
 					{
 						title: 'Vercel',
-						body: 'Hosts the web app and server endpoint. Vercel may process request, IP, device, usage, security, and diagnostic information as part of hosting.'
+						body: 'Hosts the web app and server endpoint and provides Web Analytics. Vercel may process request, IP, page URL, referrer, browser, device, approximate location, usage, security, and diagnostic information.'
 					},
 					{
 						title: 'jsDelivr and Google-hosted MediaPipe assets',
@@ -122,7 +126,7 @@ export const privacyMessages = {
 				paragraphs: [
 					'Live camera frames and the current working photo remain in browser memory for the active experience and are discarded when the page state is cleared or the tab is closed. Our server handles an analysis upload for the request and does not intentionally persist it in a Presence database.',
 					'Language and scenario preferences remain in localStorage until you change or clear browser site data. A comparison photo and report remain only after you choose to recapture; selecting “Start over” removes that comparison record. Clearing site data in your browser removes all Presence localStorage.',
-					'Hosting logs and data processed by external providers follow each provider’s retention rules. We cannot delete data held independently under a provider’s policy through the prototype interface.'
+					'Hosting logs, Web Analytics data, and other data processed by external providers follow each provider’s retention rules. We cannot delete data held independently under a provider’s policy through the prototype interface.'
 				],
 				items: []
 			},
@@ -142,7 +146,7 @@ export const privacyMessages = {
 				title: 'Security, cookies, and children',
 				paragraphs: [
 					'The production deployment is intended to use HTTPS, the YouCam API key remains server-side, and images are reduced in size in the browser before upload. No safeguard eliminates every risk, so do not upload a photo you are not comfortable having processed by the providers listed above.',
-					'Presence does not currently set its own cookies or include an analytics or advertising SDK. It uses localStorage for the limited preferences and comparison data described above.',
+					'Presence does not currently set its own cookies or include an advertising SDK. It includes Vercel Web Analytics for the limited usage data described above and uses localStorage for preferences and comparison data.',
 					'This prototype is not directed to children under 14. A child under 14 should not upload a photo without consent and supervision from a parent or legal guardian.'
 				],
 				items: []
@@ -174,7 +178,7 @@ export const privacyMessages = {
 		footer: {
 			tagline: 'Clear choices for every photo you share.',
 			home: 'Return to Presence',
-			source: 'Prototype-specific notice · July 20, 2026',
+			source: 'Prototype-specific notice · July 21, 2026',
 			status: 'Privacy-first hackathon prototype',
 			navigation: 'Footer links',
 			issues: 'Project issues',
@@ -199,7 +203,7 @@ export const privacyMessages = {
 			description:
 				'Presence가 어떤 정보를 처리하는지, 사진이 언제 기기를 벗어나는지, 어떤 외부 서비스를 이용하는지, 브라우저에 남은 정보를 어떻게 지울 수 있는지 안내합니다.',
 			effective: '시행일 2026년 7월 20일',
-			updated: '최종 업데이트 2026년 7월 20일'
+			updated: '최종 업데이트 2026년 7월 21일'
 		},
 		prototype: {
 			title: '프로토타입 안내',
@@ -239,7 +243,7 @@ export const privacyMessages = {
 				number: '02',
 				title: '처리하는 정보',
 				paragraphs: [
-					'선택한 기능에 따라 아래 정보가 처리됩니다. Presence는 회원 프로필을 수집하지 않으며 자체 분석 추적 도구를 사용하지 않습니다.'
+					'선택한 기능에 따라 아래 정보가 처리됩니다. Presence는 회원 프로필을 수집하지 않습니다. 전체 방문과 사이트 이용 현황을 파악하기 위해 Vercel Web Analytics를 사용합니다.'
 				],
 				items: [
 					{
@@ -261,6 +265,10 @@ export const privacyMessages = {
 					{
 						title: '호스팅 및 요청 로그',
 						body: '사이트 제공과 보안을 위해 호스팅 업체가 IP 주소, 요청 시각, 브라우저·기기 정보, 진단 로그를 처리할 수 있습니다.'
+					},
+					{
+						title: '이용 분석 정보',
+						body: 'Vercel Web Analytics가 페이지 URL, 유입 경로, 브라우저·기기 정보, 대략적인 위치와 방문 정보를 처리합니다. Presence는 이 분석 기능을 통해 사진, 카메라 화면 또는 리포트 내용을 전송하지 않습니다.'
 					}
 				]
 			},
@@ -269,7 +277,7 @@ export const privacyMessages = {
 				number: '03',
 				title: '처리 목적과 시점',
 				paragraphs: [
-					'이용자가 시작한 카메라 체크 제공, 이미지 준비, 요청한 리포트 생성, 언어·상황 설정 기억, 전후 비교, 서비스 안정성과 보안을 위해 정보를 처리합니다.',
+					'이용자가 시작한 카메라 체크 제공, 이미지 준비, 요청한 리포트 생성, 언어·상황 설정 기억, 전후 비교, 전체 사이트 이용 현황 파악, 서비스 안정성과 보안을 위해 정보를 처리합니다.',
 					'카메라는 브라우저 권한을 받은 뒤 사용합니다. 사진을 촬영하거나 업로드하는 것만으로 원격 분석이 시작되지는 않으며, “리포트 만들기”를 선택할 때 요청이 시작됩니다. 그 전에는 취소할 수 있습니다.',
 					'API 키가 설정되지 않은 경우 Presence는 데모 리포트를 만들며 사진을 YouCam으로 보내지 않습니다. 프로토타입은 업로드한 사진을 자체 데이터베이스나 영구 파일 저장소에 의도적으로 기록하지 않으며, Presence 팀은 제출된 사진이나 리포트를 자체 모델 학습에 사용하지 않습니다.'
 				],
@@ -289,7 +297,7 @@ export const privacyMessages = {
 					},
 					{
 						title: 'Vercel',
-						body: '웹 앱과 서버 API를 호스팅합니다. 호스팅 과정에서 요청, IP 주소, 기기·이용·보안·진단 정보를 처리할 수 있습니다.'
+						body: '웹 앱과 서버 API를 호스팅하고 Web Analytics를 제공합니다. 요청, IP 주소, 페이지 URL, 유입 경로, 브라우저·기기, 대략적인 위치, 이용·보안·진단 정보를 처리할 수 있습니다.'
 					},
 					{
 						title: 'jsDelivr 및 Google 호스팅 MediaPipe 파일',
@@ -304,7 +312,7 @@ export const privacyMessages = {
 				paragraphs: [
 					'실시간 카메라 화면과 현재 작업 중인 사진은 이용 과정의 브라우저 메모리에 머물며 페이지 상태가 초기화되거나 탭을 닫으면 사라집니다. 서버는 요청 동안 분석 이미지를 처리하고 Presence 데이터베이스에 의도적으로 보관하지 않습니다.',
 					'언어와 상황 설정은 변경하거나 브라우저의 사이트 데이터를 지울 때까지 localStorage에 남습니다. 비교용 사진과 리포트는 개선 후 다시 촬영하기를 선택한 경우에만 저장되며, “처음부터”를 선택하면 삭제됩니다. 브라우저에서 이 사이트의 데이터를 지우면 모든 Presence localStorage가 삭제됩니다.',
-					'호스팅 로그와 외부 업체가 처리하는 정보에는 각 업체의 보유 정책이 적용됩니다. 프로토타입 화면에서는 업체가 해당 정책에 따라 독립적으로 보유한 정보를 직접 삭제할 수 없습니다.'
+					'호스팅 로그, Web Analytics 정보와 외부 업체가 처리하는 정보에는 각 업체의 보유 정책이 적용됩니다. 프로토타입 화면에서는 업체가 해당 정책에 따라 독립적으로 보유한 정보를 직접 삭제할 수 없습니다.'
 				],
 				items: []
 			},
@@ -324,7 +332,7 @@ export const privacyMessages = {
 				title: '안전조치, 쿠키, 아동',
 				paragraphs: [
 					'운영 배포에는 HTTPS를 사용하고, YouCam API 키는 서버에만 두며, 전송 전 브라우저에서 이미지 크기를 줄입니다. 모든 위험을 없애는 방법은 없으므로 위 외부 업체가 처리하는 데 동의하기 어려운 사진은 업로드하지 마세요.',
-					'현재 Presence는 자체 쿠키를 설정하지 않으며 분석·광고 SDK를 포함하지 않습니다. 위에서 설명한 제한된 설정과 비교 정보를 저장할 때만 localStorage를 사용합니다.',
+					'현재 Presence는 자체 쿠키를 설정하거나 광고 SDK를 포함하지 않습니다. 위에서 설명한 제한된 이용 정보를 위해 Vercel Web Analytics를 사용하고 설정과 비교 정보를 저장하기 위해 localStorage를 사용합니다.',
 					'이 프로토타입은 만 14세 미만 아동을 대상으로 하지 않습니다. 만 14세 미만 아동은 부모 또는 법정대리인의 동의와 감독 없이 사진을 업로드하지 않아야 합니다.'
 				],
 				items: []
@@ -356,7 +364,7 @@ export const privacyMessages = {
 		footer: {
 			tagline: '사진을 공유하는 모든 순간에 분명한 선택권을 제공합니다.',
 			home: 'Presence로 돌아가기',
-			source: '프로토타입 전용 방침 · 2026년 7월 20일',
+			source: '프로토타입 전용 방침 · 2026년 7월 21일',
 			status: '개인정보 보호 중심 해커톤 프로토타입',
 			navigation: '푸터 링크',
 			issues: '프로젝트 Issues',
