@@ -1,13 +1,4 @@
-import {
-	MAX_IMAGE_DIMENSION,
-	MAX_PREPARED_IMAGE_BYTES
-} from '$lib/domains/analysis/shared/contracts';
-
-export type PreparedImage = {
-	file: File;
-	originalBytes: number;
-	wasOptimized: boolean;
-};
+import { MAX_IMAGE_DIMENSION, MAX_PREPARED_IMAGE_BYTES } from '$lib/domains/analysis/shared/public';
 
 type ImageDimensions = {
 	image: HTMLImageElement;
@@ -15,7 +6,7 @@ type ImageDimensions = {
 	height: number;
 };
 
-function loadImage(file: File): Promise<ImageDimensions> {
+function loadSourceImage(file: File): Promise<ImageDimensions> {
 	return new Promise((resolve, reject) => {
 		const url = URL.createObjectURL(file);
 		const image = new Image();
@@ -61,8 +52,8 @@ function preparedName(name: string) {
 	return `${base}-prepared.jpg`;
 }
 
-export async function prepareImageForUpload(file: File): Promise<PreparedImage> {
-	const source = await loadImage(file);
+export async function prepareImageForUpload(file: File): Promise<File> {
+	const source = await loadSourceImage(file);
 	const initialScale = Math.min(1, MAX_IMAGE_DIMENSION / Math.max(source.width, source.height));
 	let width = Math.max(1, Math.round(source.width * initialScale));
 	let height = Math.max(1, Math.round(source.height * initialScale));
@@ -72,7 +63,7 @@ export async function prepareImageForUpload(file: File): Promise<PreparedImage> 
 		file.size <= MAX_PREPARED_IMAGE_BYTES &&
 		(file.type === 'image/jpeg' || file.type === 'image/png')
 	) {
-		return { file, originalBytes: file.size, wasOptimized: false };
+		return file;
 	}
 
 	let quality = 0.9;
@@ -97,12 +88,43 @@ export async function prepareImageForUpload(file: File): Promise<PreparedImage> 
 		throw new Error('The image is still too large after preparation.');
 	}
 
-	return {
-		file: new File([blob], preparedName(file.name), {
-			type: 'image/jpeg',
-			lastModified: Date.now()
-		}),
-		originalBytes: file.size,
-		wasOptimized: true
-	};
+	return new File([blob], preparedName(file.name), {
+		type: 'image/jpeg',
+		lastModified: Date.now()
+	});
+}
+
+export function readImageFile(file: File) {
+	return new Promise<string>((resolve, reject) => {
+		const reader = new FileReader();
+		reader.onload = () => resolve(String(reader.result));
+		reader.onerror = () => reject(reader.error);
+		reader.readAsDataURL(file);
+	});
+}
+
+function loadImageUrl(src: string) {
+	return new Promise<HTMLImageElement>((resolve, reject) => {
+		const image = new Image();
+		image.onload = () => resolve(image);
+		image.onerror = reject;
+		image.src = src;
+	});
+}
+
+export async function measureImageBrightness(src: string) {
+	const image = await loadImageUrl(src);
+	const canvas = document.createElement('canvas');
+	canvas.width = 80;
+	canvas.height = 80;
+	const context = canvas.getContext('2d', { willReadFrequently: true });
+	if (!context) return 0.58;
+
+	context.drawImage(image, 0, 0, canvas.width, canvas.height);
+	const { data } = context.getImageData(0, 0, canvas.width, canvas.height);
+	let total = 0;
+	for (let index = 0; index < data.length; index += 16) {
+		total += 0.2126 * data[index] + 0.7152 * data[index + 1] + 0.0722 * data[index + 2];
+	}
+	return total / (data.length / 16) / 255;
 }

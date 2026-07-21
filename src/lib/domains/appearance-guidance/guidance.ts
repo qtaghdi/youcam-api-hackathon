@@ -1,4 +1,4 @@
-import type { AppearanceGuidance, SkinMetric } from '$lib/domains/analysis/shared/contracts';
+import type { AppearanceGuidance, SkinMetric } from './contracts';
 
 const guidanceByMetric: Record<string, Omit<AppearanceGuidance, 'id'>> = {
 	radiance: {

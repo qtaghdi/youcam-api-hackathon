@@ -1,13 +1,13 @@
 import { json } from '@sveltejs/kit';
 import { dev } from '$app/environment';
+import { BoundraRuntimeError, executeContract } from 'boundra';
 import type { RequestHandler } from './$types';
-import { MAX_IMAGE_BYTES, SUPPORTED_IMAGE_TYPES } from '$lib/domains/analysis/shared/contracts';
-import { getAnalysisInputErrorMessage } from '$lib/domains/analysis/shared/errors';
 import {
-	analyzeWithYouCam,
-	buildDemoAnalysis,
-	hasYouCamCredentials
-} from '$lib/domains/analysis/server/youcam';
+	MAX_IMAGE_BYTES,
+	SUPPORTED_IMAGE_TYPES,
+	getAnalysisInputErrorMessage
+} from '$lib/domains/analysis/shared/public';
+import { analyzeImageImplementation } from '$lib/domains/analysis/server/public';
 
 export const POST: RequestHandler = async ({ request }) => {
 	const form = await request.formData();
@@ -31,6 +31,7 @@ export const POST: RequestHandler = async ({ request }) => {
 	const brightness = Number.isFinite(brightnessValue)
 		? Math.max(0, Math.min(1, brightnessValue))
 		: 0.58;
+	const scenario = form.get('scenario') ?? 'interview';
 
 	if (!(image instanceof File)) {
 		return json({ message: errors.missing }, { status: 400 });
@@ -43,13 +44,20 @@ export const POST: RequestHandler = async ({ request }) => {
 	}
 
 	try {
-		const result = hasYouCamCredentials()
-			? await analyzeWithYouCam(image, brightness)
-			: buildDemoAnalysis(image, brightness);
+		const result = await executeContract(analyzeImageImplementation, {
+			image,
+			brightness,
+			locale,
+			scenario
+		});
 		return json(result);
 	} catch (error) {
 		console.error('YouCam analysis failed', error);
-		const detail = error instanceof Error ? error.message : String(error);
+		if (error instanceof BoundraRuntimeError && error.code === 'RUNTIME-001') {
+			return json({ code: error.code, message: errors.missing }, { status: 400 });
+		}
+		const cause = error instanceof BoundraRuntimeError ? error.cause : error;
+		const detail = cause instanceof Error ? cause.message : String(cause);
 		const inputMessage = getAnalysisInputErrorMessage(detail, locale);
 		if (inputMessage) {
 			return json({ code: detail, message: inputMessage }, { status: 422 });

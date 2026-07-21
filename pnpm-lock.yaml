@@ -17,6 +17,9 @@ importers:
       '@vercel/analytics':
         specifier: ^2.0.1
         version: 2.0.1(@sveltejs/kit@2.69.3(@sveltejs/vite-plugin-svelte@7.2.0(svelte@5.56.5(@typescript-eslint/types@8.64.0))(vite@8.1.4(@types/node@24.13.3)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.21.0)(yaml@2.9.0)))(svelte@5.56.5(@typescript-eslint/types@8.64.0))(typescript@6.0.3)(vite@8.1.4(@types/node@24.13.3)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.21.0)(yaml@2.9.0)))(svelte@5.56.5(@typescript-eslint/types@8.64.0))
+      boundra:
+        specifier: ^0.2.1
+        version: 0.2.1
       zod:
         specifier: ^4.4.3
         version: 4.4.3
@@ -1649,6 +1652,11 @@ packages:
 
   boolbase@1.0.0:
     resolution: {integrity: sha512-JZOSA7Mo9sNGB8+UjSgzdLtokWAky1zbztM3WRLCbZ70/3cTANmQmOdR7y2g+J0e2WXywy1yS468tY+IruqEww==}
+
+  boundra@0.2.1:
+    resolution: {integrity: sha512-Mfy1AMfKjumwVk3uk2KA4hNCMb4cGoskCwaA6CVhys7Xdt5zCMRhKA9VkxqGegs0+um1oE9rvpIofJtLR8/RiA==}
+    engines: {node: '>=20'}
+    hasBin: true
 
   brace-expansion@1.1.16:
     resolution: {integrity: sha512-IDw48K2/2kRkg9LdJxurvq3lV3aBgq0REY89duEqFRthjlPdXHKMj7EnQOXVckxzgisinf3nHfrcE2FufFLXMw==}
@@ -4466,6 +4474,8 @@ snapshots:
       file-uri-to-path: 1.0.0
 
   boolbase@1.0.0: {}
+
+  boundra@0.2.1: {}
 
   brace-expansion@1.1.16:
     dependencies:

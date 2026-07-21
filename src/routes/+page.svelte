@@ -18,23 +18,37 @@
 		X
 	} from '@lucide/svelte';
 	import {
-		analysisResultSchema,
 		MAX_SOURCE_IMAGE_BYTES,
 		SUPPORTED_IMAGE_TYPES,
 		type AnalysisResult
-	} from '$lib/domains/analysis/shared/contracts';
-	import { prepareImageForUpload } from '$lib/domains/analysis/client/image';
+	} from '$lib/domains/analysis/shared/public';
+	import {
+		analyzeImage,
+		measureImageBrightness,
+		prepareImageForUpload,
+		readImageFile
+	} from '$lib/domains/analysis/client/public';
 	import { isLocale, messages, type Locale } from '$lib/i18n/messages';
-	import type { CameraQuality } from '$lib/domains/camera/shared/contracts';
-	import { inspectFrame } from '$lib/domains/camera/client/quality';
+	import type { CameraQuality } from '$lib/domains/camera/shared/public';
+	import { captureCameraFrame, inspectFrame } from '$lib/domains/camera/client/public';
 	import {
 		clearBeforeCapture,
 		readBeforeCapture,
 		saveBeforeCapture,
 		type StoredCapture
-	} from '$lib/domains/comparison/client/storage';
+	} from '$lib/domains/comparison/public';
 	import LanguageButton from '$lib/components/language-button.svelte';
 	import SiteFooter from '$lib/components/site-footer.svelte';
+	import {
+		buildAppearanceInsights,
+		calculateComparisonGain,
+		calculateExpectedGain,
+		calculateProjectedScore,
+		calculateReadinessScore,
+		isCaptureReady,
+		localizeGuidance,
+		localizeMetrics
+	} from './report-view-model';
 
 	type Stage = 'landing' | 'camera' | 'review' | 'analyzing' | 'result' | 'comparison';
 	type Scenario = 'interview' | 'meeting' | 'presentation' | 'profile';
@@ -57,11 +71,6 @@
 	let uploadError = $state('');
 	let isPreparingImage = $state(false);
 	let analysisPhase = $state<0 | 1 | 2>(0);
-	let preparedImage = $state<{
-		originalBytes: number;
-		preparedBytes: number;
-		wasOptimized: boolean;
-	} | null>(null);
 	let stageHeading = $state<HTMLHeadingElement>();
 	let analysisController: AbortController | null = null;
 	let analysisTimers: ReturnType<typeof setTimeout>[] = [];
@@ -77,13 +86,6 @@
 	let qualityTimer: ReturnType<typeof setInterval> | undefined;
 	const copy = $derived(messages[locale]);
 	const scenarioCopy = $derived(copy.scenarios[scenario]);
-	const preparedImageNote = $derived.by(() => {
-		if (!preparedImage) return '';
-		const preparedSize = formatFileSize(preparedImage.preparedBytes);
-		return preparedImage.wasOptimized
-			? copy.review.optimized(formatFileSize(preparedImage.originalBytes), preparedSize)
-			: copy.review.prepared(preparedSize);
-	});
 
 	const stepNumber = $derived(
 		stage === 'camera' || stage === 'review'
@@ -94,37 +96,12 @@
 					? 3
 					: 0
 	);
-	const readinessScore = $derived(
-		Math.round(
-			(quality.face === 'good' ? 28 : quality.face === 'warning' ? 10 : 16) +
-				(quality.position === 'good' ? 28 : quality.position === 'warning' ? 10 : 15) +
-				(quality.lighting === 'good' ? 24 : quality.lighting === 'warning' ? 8 : 13) +
-				(quality.background === 'good' ? 20 : quality.background === 'warning' ? 7 : 11)
-		)
-	);
-	const captureReady = $derived(
-		quality.face === 'good' && quality.position === 'good' && quality.lighting === 'good'
-	);
+	const readinessScore = $derived(calculateReadinessScore(quality));
+	const captureReady = $derived(isCaptureReady(quality));
 	const analysisProgress = $derived([24, 58, 84][analysisPhase]);
-	const expectedGain = $derived(
-		result
-			? Math.min(
-					15,
-					Math.max(
-						4,
-						Math.round(
-							result.guidance.reduce((total, item) => total + item.expectedImpact, 0) * 0.55
-						)
-					)
-				)
-			: 0
-	);
-	const projectedScore = $derived(result ? Math.min(96, result.overallScore + expectedGain) : 0);
-	const comparisonGain = $derived(
-		result && previousCapture
-			? Math.max(0, result.overallScore - previousCapture.result.overallScore)
-			: 0
-	);
+	const expectedGain = $derived(calculateExpectedGain(result));
+	const projectedScore = $derived(calculateProjectedScore(result, expectedGain));
+	const comparisonGain = $derived(calculateComparisonGain(result, previousCapture?.result ?? null));
 	const localizedSummary = $derived(
 		!result
 			? ''
@@ -132,76 +109,9 @@
 				? scenarioCopy.summaryReady
 				: scenarioCopy.summaryImprove
 	);
-	const localizedMetrics = $derived(
-		result
-			? result.metrics.map((item) => ({
-					...item,
-					label:
-						copy.report.metricLabels[item.key as keyof typeof copy.report.metricLabels] ??
-						item.label
-				}))
-			: []
-	);
-	const localizedGuidance = $derived(
-		result
-			? result.guidance.map((item) => {
-					const localized = copy.report.guidance[item.id as keyof typeof copy.report.guidance];
-					return {
-						...item,
-						title: localized?.title ?? item.title,
-						description: localized?.description ?? item.description
-					};
-				})
-			: []
-	);
-	const appearanceInsights = $derived.by(() => {
-		if (!result) return [];
-		const score = (key: string, fallback: number) =>
-			result?.metrics.find((metric) => metric.key === key)?.score ?? fallback;
-		const conditionScore = Math.round((score('texture', 70) + score('pore', 75)) / 2);
-		const toneScore = score('redness', 74);
-		const balanceScore = Math.round((score('dark_circle', 66) + result.overallScore) / 2);
-		const lightingScore = score('radiance', 72);
-		return [
-			{
-				key: 'condition',
-				label: copy.report.appearance.condition.label,
-				score: conditionScore,
-				summary:
-					conditionScore >= 75
-						? copy.report.appearance.condition.good
-						: copy.report.appearance.condition.attention,
-				insight: copy.report.appearance.condition.insight
-			},
-			{
-				key: 'tone',
-				label: copy.report.appearance.tone.label,
-				score: toneScore,
-				summary: `${copy.report.skinTone.undertone} ${copy.report.undertone}`,
-				insight: copy.report.appearance.tone.insight
-			},
-			{
-				key: 'balance',
-				label: copy.report.appearance.balance.label,
-				score: balanceScore,
-				summary:
-					balanceScore >= 75
-						? copy.report.appearance.balance.good
-						: copy.report.appearance.balance.attention,
-				insight: copy.report.appearance.balance.insight
-			},
-			{
-				key: 'lighting',
-				label: copy.report.appearance.lighting.label,
-				score: lightingScore,
-				summary:
-					lightingScore >= 75
-						? copy.report.appearance.lighting.good
-						: copy.report.appearance.lighting.attention,
-				insight: copy.report.appearance.lighting.insight
-			}
-		];
-	});
+	const localizedMetrics = $derived(localizeMetrics(result, copy.report));
+	const localizedGuidance = $derived(localizeGuidance(result, copy.report));
+	const appearanceInsights = $derived(buildAppearanceInsights(result, quality, copy.report));
 
 	onMount(() => {
 		const savedLocale = localStorage.getItem('presence-locale');
@@ -244,7 +154,6 @@
 		uploadError = '';
 		captureFile = null;
 		captureUrl = '';
-		preparedImage = null;
 		await changeStage('camera');
 		await startCamera();
 	}
@@ -290,54 +199,17 @@
 		stream = null;
 	}
 
-	function drawCover(
-		context: CanvasRenderingContext2D,
-		source: CanvasImageSource,
-		sourceWidth: number,
-		sourceHeight: number,
-		width: number,
-		height: number
-	) {
-		const sourceRatio = sourceWidth / sourceHeight;
-		const targetRatio = width / height;
-		let sx = 0;
-		let sy = 0;
-		let sw = sourceWidth;
-		let sh = sourceHeight;
-		if (sourceRatio > targetRatio) {
-			sw = sourceHeight * targetRatio;
-			sx = (sourceWidth - sw) / 2;
-		} else {
-			sh = sourceWidth / targetRatio;
-			sy = (sourceHeight - sh) / 2;
-		}
-		context.drawImage(source, sx, sy, sw, sh, 0, 0, width, height);
-	}
-
 	async function capturePhoto() {
 		if (!video?.videoWidth) return;
-		const canvas = document.createElement('canvas');
-		canvas.width = 1080;
-		canvas.height = 1350;
-		const context = canvas.getContext('2d');
-		if (!context) return;
-		context.translate(canvas.width, 0);
-		context.scale(-1, 1);
-		drawCover(context, video, video.videoWidth, video.videoHeight, canvas.width, canvas.height);
-		const blob = await new Promise<Blob | null>((resolve) =>
-			canvas.toBlob(resolve, 'image/jpeg', 0.9)
-		);
-		if (!blob) return;
-		const file = new File([blob], `presence-${Date.now()}.jpg`, { type: 'image/jpeg' });
-		captureFile = file;
-		captureUrl = await readFile(file);
-		preparedImage = {
-			originalBytes: file.size,
-			preparedBytes: file.size,
-			wasOptimized: false
-		};
-		stopCamera();
-		await changeStage('review');
+		try {
+			const file = await captureCameraFrame(video);
+			captureFile = file;
+			captureUrl = await readImageFile(file);
+			stopCamera();
+			await changeStage('review');
+		} catch {
+			uploadError = copy.camera.errors.preparation;
+		}
 	}
 
 	async function selectFile(event: Event) {
@@ -356,15 +228,9 @@
 
 		isPreparingImage = true;
 		try {
-			const prepared = await prepareImageForUpload(file);
-			captureFile = prepared.file;
-			captureUrl = await readFile(prepared.file);
-			preparedImage = {
-				originalBytes: prepared.originalBytes,
-				preparedBytes: prepared.file.size,
-				wasOptimized: prepared.wasOptimized
-			};
-			quality = { ...quality, brightness: await measureBrightness(captureUrl) };
+			captureFile = await prepareImageForUpload(file);
+			captureUrl = await readImageFile(captureFile);
+			quality = { ...quality, brightness: await measureImageBrightness(captureUrl) };
 			cameraError = '';
 			stopCamera();
 			await changeStage('review');
@@ -381,55 +247,9 @@
 		fileInput.click();
 	}
 
-	function formatFileSize(bytes: number) {
-		const megabyte = 1024 * 1024;
-		const useMegabytes = bytes >= megabyte;
-		return new Intl.NumberFormat(locale, {
-			style: 'unit',
-			unit: useMegabytes ? 'megabyte' : 'kilobyte',
-			unitDisplay: 'short',
-			maximumFractionDigits: 1
-		}).format(useMegabytes ? bytes / megabyte : bytes / 1024);
-	}
-
-	function readFile(file: File) {
-		return new Promise<string>((resolve, reject) => {
-			const reader = new FileReader();
-			reader.onload = () => resolve(String(reader.result));
-			reader.onerror = () => reject(reader.error);
-			reader.readAsDataURL(file);
-		});
-	}
-
-	function loadImage(src: string) {
-		return new Promise<HTMLImageElement>((resolve, reject) => {
-			const image = new Image();
-			image.onload = () => resolve(image);
-			image.onerror = reject;
-			image.src = src;
-		});
-	}
-
-	async function measureBrightness(src: string) {
-		const image = await loadImage(src);
-		const canvas = document.createElement('canvas');
-		canvas.width = 80;
-		canvas.height = 80;
-		const context = canvas.getContext('2d', { willReadFrequently: true });
-		if (!context) return 0.58;
-		context.drawImage(image, 0, 0, 80, 80);
-		const data = context.getImageData(0, 0, 80, 80).data;
-		let total = 0;
-		for (let index = 0; index < data.length; index += 16) {
-			total += 0.2126 * data[index] + 0.7152 * data[index + 1] + 0.0722 * data[index + 2];
-		}
-		return total / (data.length / 16) / 255;
-	}
-
 	async function retake() {
 		captureFile = null;
 		captureUrl = '';
-		preparedImage = null;
 		await startExperience(isRetake);
 	}
 
@@ -446,21 +266,16 @@
 		const controller = new AbortController();
 		analysisController = controller;
 		await changeStage('analyzing');
-		const form = new FormData();
-		form.set('image', captureFile);
-		form.set('brightness', String(quality.brightness));
-		form.set('locale', locale);
-		form.set('scenario', scenario);
-
 		try {
-			const response = await fetch('/api/analyze', {
-				method: 'POST',
-				body: form,
-				signal: controller.signal
-			});
-			const body = await response.json();
-			if (!response.ok) throw new Error(body.message ?? copy.review.errors.generic);
-			result = analysisResultSchema.parse(body);
+			result = await analyzeImage(
+				{
+					image: captureFile,
+					brightness: quality.brightness,
+					locale,
+					scenario
+				},
+				{ signal: controller.signal }
+			);
 			if (isRetake && previousCapture) {
 				await changeStage('comparison');
 			} else {
@@ -505,7 +320,6 @@
 		previousCapture = null;
 		captureFile = null;
 		captureUrl = '';
-		preparedImage = null;
 		result = null;
 		isRetake = false;
 		comparisonPosition = 50;
@@ -818,7 +632,6 @@
 						<div>
 							<strong>{copy.review.complete}</strong>
 							<small>{copy.review.privacy}</small>
-							{#if preparedImageNote}<small class="prepared-note">{preparedImageNote}</small>{/if}
 						</div>
 					</div>
 					<ul>
@@ -949,6 +762,37 @@
 					<p class="tone-note">{copy.report.paletteNote}</p>
 				</article>
 			</div>
+			<section class="report-method">
+				<div class="section-heading">
+					<div>
+						<p class="card-label">{copy.report.method.label}</p>
+						<h3>{copy.report.method.title}</h3>
+					</div>
+				</div>
+				<div class="method-grid">
+					<article>
+						<span>01</span>
+						<div>
+							<strong>{copy.report.method.youcamTitle}</strong>
+							<p>{copy.report.method.youcamBody}</p>
+						</div>
+					</article>
+					<article>
+						<span>02</span>
+						<div>
+							<strong>{copy.report.method.presenceTitle}</strong>
+							<p>{copy.report.method.presenceBody}</p>
+						</div>
+					</article>
+					<article>
+						<span>03</span>
+						<div>
+							<strong>{copy.report.method.verifyTitle}</strong>
+							<p>{copy.report.method.verifyBody}</p>
+						</div>
+					</article>
+				</div>
+			</section>
 			<section class="moment-section">
 				<div class="section-heading">
 					<div>
@@ -975,7 +819,8 @@
 					{#each appearanceInsights as item (item.key)}
 						<article>
 							<div class="analysis-card-head">
-								<span>{item.label}</span><strong>{item.score}</strong>
+								<div><span>{item.label}</span><small>{item.source}</small></div>
+								<strong>{item.score}</strong>
 							</div>
 							<h4>{item.summary}</h4>
 							<p>{item.insight}</p>
@@ -1967,10 +1812,6 @@
 		margin-top: 5px;
 		line-height: 1.45;
 	}
-	.review-check .prepared-note {
-		color: #5e7868;
-		font-weight: 650;
-	}
 	.review-copy ul {
 		padding: 17px 0 17px 18px;
 		margin: 0;
@@ -1985,6 +1826,17 @@
 	}
 	.review-actions button {
 		flex: 1;
+	}
+	.review-actions .secondary-button {
+		flex-grow: 0.82;
+	}
+	.review-actions .primary-button {
+		flex-grow: 1.18;
+		padding-inline: 18px;
+		white-space: nowrap;
+	}
+	.review-actions button :global(svg) {
+		flex: none;
 	}
 	.error-box {
 		display: flex;
@@ -2223,6 +2075,46 @@
 		border: 1px solid var(--line);
 		padding: 27px;
 	}
+	.report-method {
+		margin-top: 18px;
+		padding: 30px;
+		border: 1px solid var(--line);
+		background: #f4f6f7;
+	}
+	.method-grid {
+		display: grid;
+		grid-template-columns: repeat(3, 1fr);
+	}
+	.method-grid article {
+		display: grid;
+		grid-template-columns: 28px 1fr;
+		gap: 10px;
+		padding: 21px 20px 2px 0;
+	}
+	.method-grid article + article {
+		padding-left: 20px;
+		border-left: 1px solid #d8dfe3;
+	}
+	.method-grid article > span {
+		color: #648092;
+		font-size: 10px;
+		font-weight: 800;
+		letter-spacing: 0.08em;
+	}
+	.method-grid strong,
+	.method-grid p {
+		display: block;
+	}
+	.method-grid strong {
+		font-size: 12px;
+		line-height: 1.45;
+	}
+	.method-grid p {
+		margin: 7px 0 0;
+		color: #7b7f82;
+		font-size: 10px;
+		line-height: 1.55;
+	}
 	.score-card {
 		text-align: center;
 	}
@@ -2437,6 +2329,17 @@
 		font-weight: 750;
 		letter-spacing: 0.05em;
 		color: #77756f;
+	}
+	.analysis-card-head > div {
+		display: grid;
+		gap: 4px;
+	}
+	.analysis-card-head small {
+		color: #9a9da0;
+		font-size: 8px;
+		font-weight: 700;
+		letter-spacing: 0.06em;
+		text-transform: uppercase;
 	}
 	.analysis-card-head strong {
 		font:
@@ -2881,6 +2784,7 @@
 		letter-spacing: 0.04em;
 	}
 	.result-grid > article,
+	.report-method,
 	.analysis-section,
 	.guidance-section,
 	.moment-section {
@@ -2981,6 +2885,18 @@
 		}
 		.result-grid {
 			grid-template-columns: 1fr 1fr;
+		}
+		.method-grid {
+			grid-template-columns: 1fr;
+		}
+		.method-grid article,
+		.method-grid article + article {
+			padding: 18px 0;
+			border-left: 0;
+			border-top: 1px solid #d8dfe3;
+		}
+		.method-grid article:first-child {
+			border-top: 0;
 		}
 		.metrics-card {
 			grid-column: 2;
@@ -3155,6 +3071,9 @@
 			grid-column: auto;
 		}
 		.guidance-section {
+			padding: 22px 18px;
+		}
+		.report-method {
 			padding: 22px 18px;
 		}
 		.moment-section {

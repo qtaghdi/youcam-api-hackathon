@@ -1,0 +1,11 @@
+{
+	"$schema": "https://boundra.dev/schemas/domain-manifest.v1.json",
+	"name": "analysis",
+	"version": "0.1.0",
+	"publicApi": {
+		"client": ["./client/public.ts"],
+		"server": ["./server/public.ts"],
+		"shared": ["./shared/public.ts"]
+	},
+	"dependsOn": ["appearance-guidance"]
+}

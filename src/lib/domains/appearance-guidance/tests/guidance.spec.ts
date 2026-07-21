@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildGuidance } from './guidance';
-import type { SkinMetric } from '$lib/domains/analysis/shared/contracts';
+import { buildGuidance, type SkinMetric } from '../public';
 
 const metrics: SkinMetric[] = [
 	{ key: 'radiance', label: 'Radiance', score: 75, status: 'good' },

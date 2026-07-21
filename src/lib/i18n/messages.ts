@@ -176,9 +176,6 @@ export const messages = {
 			imageAlt: 'Your capture before review',
 			complete: 'Capture complete',
 			privacy: 'Your image is only sent when you start the report.',
-			prepared: (size: string) => `Prepared securely on this device · ${size}`,
-			optimized: (original: string, ready: string) =>
-				`Optimized securely on this device · ${original} → ${ready}`,
 			checks: [
 				'One clearly visible face',
 				'Eyes, forehead, and jaw in frame',
@@ -210,35 +207,54 @@ export const messages = {
 			summaryFocused: 'A few focused adjustments could make you appear even more confident.',
 			summarySample:
 				'You’re almost ready. A few small changes to light and framing could make your presence feel noticeably stronger.',
-			source: 'YouCam analysis',
+			source: 'Powered by YouCam API',
 			scenario: 'SELECTED MOMENT',
 			sample: 'SAMPLE REPORT',
-			overall: 'OVERALL PRESENCE',
+			overall: 'CAMERA-READINESS SCORE',
 			current: 'Current',
-			estimatedAfter: 'Estimated after',
-			estimateNote: 'Estimated from your three highest-impact recommendations.',
-			breakdown: 'READINESS BREAKDOWN',
+			estimatedAfter: 'Guidance projection',
+			estimateNote:
+				'Planning estimate—not a measured result. Apply the actions and recapture to verify the change.',
+			breakdown: 'YOUCAM API SIGNALS',
 			colorTone: 'COLOR HARMONY',
 			undertone: 'camera palette',
 			paletteNote: 'Try navy, cream, soft blue, or muted teal near your face.',
 			momentLabel: 'YOUR MOMENT CHECKLIST',
 			momentTitle: 'Keep these three things consistent.',
-			appearanceLabel: 'FIRST-IMPRESSION FACTORS',
-			appearanceTitle: 'What shapes the frame',
-			observations: 'Personalized observations',
+			appearanceLabel: 'PRESENCE INTERPRETATION',
+			appearanceTitle: 'What you can control in the frame',
+			observations: 'Derived guidance',
 			actionsLabel: 'YOUR TOP 3 ACTIONS',
 			actionsTitle: 'Small changes. Visible impact.',
-			prioritized: 'Prioritized for you',
+			prioritized: 'Presence recommendations',
 			expected: 'EXPECTED',
 			difficulty: { easy: 'EASY', moderate: 'MODERATE' },
 			startOver: 'Start over',
 			recapture: 'Apply actions & recapture',
+			method: {
+				label: 'HOW TO READ THIS REPORT',
+				title: 'Signals, interpretation, then verification.',
+				youcamTitle: 'YouCam API signals',
+				youcamBody:
+					'Skin Analysis and Skin Tone Analysis provide the normalized appearance signals shown above.',
+				presenceTitle: 'Presence interpretation',
+				presenceBody:
+					'Presence combines those signals with on-device camera checks to suggest controllable setup changes.',
+				verifyTitle: 'Verified by recapture',
+				verifyBody:
+					'The projection is not a measured outcome. Recapture after making changes to compare actual reports.'
+			},
+			sourceLabels: {
+				youcam: 'YouCam signal',
+				device: 'On-device check',
+				derived: 'Presence-derived'
+			},
 			metricLabels: {
-				radiance: 'On-camera clarity',
-				texture: 'Detail balance',
-				redness: 'Color balance',
-				dark_circle: 'Eye-area clarity',
-				pore: 'Image definition'
+				radiance: 'Radiance',
+				texture: 'Texture visibility',
+				redness: 'Tone variation',
+				dark_circle: 'Under-eye visibility',
+				pore: 'Pore visibility'
 			},
 			skinTone: { label: 'Warm-neutral palette', undertone: 'Neutral-warm' },
 			appearance: {
@@ -501,9 +517,6 @@ export const messages = {
 			imageAlt: '리뷰 전 촬영 이미지',
 			complete: '촬영 완료',
 			privacy: '리포트를 시작할 때만 이미지가 전송됩니다.',
-			prepared: (size: string) => `이 기기에서 안전하게 준비됨 · ${size}`,
-			optimized: (original: string, ready: string) =>
-				`이 기기에서 안전하게 최적화됨 · ${original} → ${ready}`,
 			checks: [
 				'얼굴 한 개가 선명하게 보임',
 				'눈과 이마, 턱이 프레임 안에 있음',
@@ -535,35 +548,53 @@ export const messages = {
 			summaryFocused: '몇 가지를 집중적으로 조정하면 더욱 자신감 있는 인상을 만들 수 있습니다.',
 			summarySample:
 				'거의 준비됐어요. 조명과 구도를 조금만 바꾸면 훨씬 더 안정적인 인상을 만들 수 있습니다.',
-			source: 'YouCam 분석',
+			source: 'YouCam API 기반',
 			scenario: '선택한 상황',
 			sample: '샘플 리포트',
-			overall: '종합 프레즌스',
+			overall: '카메라 준비도 점수',
 			current: '현재',
-			estimatedAfter: '개선 예상',
-			estimateNote: '효과가 가장 큰 세 가지 추천 사항을 기준으로 계산한 예상치입니다.',
-			breakdown: '준비도 상세',
+			estimatedAfter: '가이드 예상치',
+			estimateNote:
+				'측정 결과가 아닌 계획용 예상치입니다. 추천을 적용하고 다시 촬영해 실제 변화를 확인하세요.',
+			breakdown: 'YOUCAM API 신호',
 			colorTone: '컬러 조화',
 			undertone: '카메라 팔레트',
 			paletteNote: '얼굴 가까이에 네이비, 크림, 소프트 블루, 뮤트 틸을 활용해 보세요.',
 			momentLabel: '상황별 체크리스트',
 			momentTitle: '이 세 가지를 일관되게 유지하세요.',
-			appearanceLabel: '첫인상 요소',
-			appearanceTitle: '화면 인상을 만드는 요소',
-			observations: '맞춤 관찰 결과',
+			appearanceLabel: 'PRESENCE 해석',
+			appearanceTitle: '직접 조절할 수 있는 화면 요소',
+			observations: '파생 가이드',
 			actionsLabel: '가장 중요한 개선 3가지',
 			actionsTitle: '작은 변화로 더 좋은 인상을.',
-			prioritized: '효과 순으로 정리했어요',
+			prioritized: 'Presence 추천',
 			expected: '예상 개선',
 			difficulty: { easy: '쉬움', moderate: '보통' },
 			startOver: '처음부터',
 			recapture: '개선 후 다시 촬영',
+			method: {
+				label: '리포트 읽는 방법',
+				title: '신호를 확인하고, 해석한 뒤, 다시 촬영해 검증합니다.',
+				youcamTitle: 'YouCam API 신호',
+				youcamBody:
+					'Skin Analysis와 Skin Tone Analysis가 위에 표시된 정규화된 외관 신호를 제공합니다.',
+				presenceTitle: 'Presence 해석',
+				presenceBody:
+					'Presence가 이 신호와 기기 내 카메라 체크를 결합해 직접 조절할 수 있는 환경 개선을 제안합니다.',
+				verifyTitle: '재촬영으로 검증',
+				verifyBody: '예상치는 측정된 결과가 아닙니다. 변경 후 다시 촬영해 실제 리포트를 비교하세요.'
+			},
+			sourceLabels: {
+				youcam: 'YouCam 신호',
+				device: '기기 내 체크',
+				derived: 'Presence 파생'
+			},
 			metricLabels: {
-				radiance: '화면 선명도',
-				texture: '디테일 균형',
-				redness: '색상 균형',
-				dark_circle: '눈가 선명도',
-				pore: '이미지 또렷함'
+				radiance: '광채',
+				texture: '피부결 가시성',
+				redness: '톤 변화',
+				dark_circle: '눈가 가시성',
+				pore: '모공 가시성'
 			},
 			skinTone: { label: '웜 뉴트럴 팔레트', undertone: '뉴트럴 웜' },
 			appearance: {
@@ -656,6 +687,7 @@ export const messages = {
 } as const;
 
 export type Locale = keyof typeof messages;
+export type AppCopy = (typeof messages)[Locale];
 
 export function isLocale(value: string | null): value is Locale {
 	return value === 'en' || value === 'ko';

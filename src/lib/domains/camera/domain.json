@@ -1,0 +1,11 @@
+{
+	"$schema": "https://boundra.dev/schemas/domain-manifest.v1.json",
+	"name": "camera",
+	"version": "0.1.0",
+	"publicApi": {
+		"client": ["./client/public.ts"],
+		"server": [],
+		"shared": ["./shared/public.ts"]
+	},
+	"dependsOn": []
+}

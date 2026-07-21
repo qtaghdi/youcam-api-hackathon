@@ -1,0 +1,11 @@
+{
+	"$schema": "https://boundra.dev/schemas/domain-manifest.v1.json",
+	"name": "appearance-guidance",
+	"version": "0.1.0",
+	"publicApi": {
+		"client": [],
+		"server": [],
+		"shared": ["./public.ts"]
+	},
+	"dependsOn": []
+}

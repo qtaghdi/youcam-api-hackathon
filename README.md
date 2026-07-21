@@ -36,6 +36,12 @@ Presence gives you a calm, private space to prepare. It looks at the parts of yo
 | **Presentation**   | Build a confident visual presence before the first slide              |
 | **Profile photo**  | Capture an image that feels natural, polished, and recognizably yours |
 
+## Start with the highest-stakes moment
+
+Presence begins with **online interviews for job seekers**: a focused group with an urgent, repeatable need and a clear before-and-after outcome. In about 30 seconds, a candidate can check the camera setup, act on a short list of improvements, and recapture to verify the change before joining the interview.
+
+The same workflow can later expand through university career centers, interview-coaching services, and recruiting platforms, then into meetings, presentations, and profile photos. This gives Presence a narrow entry point without limiting its long-term reach.
+
 ## A better setup in about 30 seconds
 
 | 01 · Choose your moment                                                                            | 02 · Check your camera                                                       | 03 · Get your guidance                                                   | 04 · Make the change                                                |
@@ -70,9 +76,25 @@ A dedicated privacy policy inside the product explains the experience in full.
 
 ## Powered by YouCam intelligence
 
-Presence combines Perfect Corp.'s **YouCam AI Skin Analysis** and **Skin Tone Analysis** to understand how lighting, color, and camera conditions affect your appearance on screen.
+Presence combines Perfect Corp.'s **YouCam AI Skin Analysis**, **Skin Tone Analysis**, and **Photo Lighting** to understand how lighting, color, and camera conditions affect your appearance on screen. Photo Lighting is an optional enhancement, so a temporary failure does not block the core report.
 
 These signals are never presented as a measure of beauty or personal worth. Presence uses them only as context for aspects of the scene you can control, such as lighting direction, visual clarity, and color harmony, and reshapes them into respectful, actionable guidance.
+
+The report makes that transformation explicit:
+
+1. **YouCam API signals** show the returned appearance-related measurements.
+2. **Presence interpretation** combines those signals with on-device framing and lighting checks to suggest controllable changes.
+3. **Recapture verification** asks the user to apply the guidance and compare a new image instead of treating a projected improvement as a measured result.
+
+## Architecture protected by Boundra
+
+Presence uses [Boundra](https://www.npmjs.com/package/boundra) to keep its `analysis`, `appearance-guidance`, `camera`, and `comparison` domains explicit as the prototype grows.
+
+- Domain manifests declare the allowed dependency graph and public APIs.
+- Single-layer domains keep their public API directly at the domain root, while mixed client/server domains retain explicit layer folders.
+- The image-analysis mutation validates both its browser input and server result at runtime.
+- The Vite development overlay reports contract and boundary failures while coding.
+- `pnpm check:boundaries` runs the same architecture guard directly, and `pnpm graph:domains` prints the domain graph.
 
 ## What the Presence experience includes
 

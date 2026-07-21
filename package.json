@@ -8,8 +8,10 @@
 		"build": "vite build",
 		"preview": "vite preview",
 		"prepare": "svelte-kit sync || echo ''",
-		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json && pnpm run check:boundaries",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
+		"check:boundaries": "boundra check-boundaries --root .",
+		"graph:domains": "boundra graph-domains --root . --format mermaid",
 		"lint": "prettier --check . && eslint .",
 		"format": "prettier --write .",
 		"sync:youcam-docs": "tsx tools/youcam-docs-sync/src/index.ts",
@@ -49,6 +51,7 @@
 		"@lucide/svelte": "^1.24.0",
 		"@mediapipe/tasks-vision": "^0.10.35",
 		"@vercel/analytics": "^2.0.1",
+		"boundra": "^0.2.1",
 		"zod": "^4.4.3"
 	}
 }

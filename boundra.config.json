@@ -1,0 +1,30 @@
+{
+	"$schema": "https://boundra.dev/schemas/boundra-config.v1.json",
+	"project": {
+		"workspaceRoot": "."
+	},
+	"paths": {
+		"apps": "src/routes",
+		"domains": "src/lib/domains",
+		"packages": "tools",
+		"crates": "crates"
+	},
+	"domain": {
+		"manifestFile": "domain.json",
+		"publicApi": {
+			"client": ["./client/public.ts"],
+			"server": ["./server/public.ts"],
+			"shared": ["./shared/public.ts"]
+		}
+	},
+	"checkBoundaries": {
+		"includeExtensions": ["ts", "js", "svelte"],
+		"ignore": [
+			"**/node_modules/**",
+			"**/.svelte-kit/**",
+			"**/dist/**",
+			"**/build/**",
+			"**/coverage/**"
+		]
+	}
+}

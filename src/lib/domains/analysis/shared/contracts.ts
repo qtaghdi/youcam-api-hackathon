@@ -1,20 +1,9 @@
+import { defineMutation, type InferSchema } from 'boundra';
 import { z } from 'zod';
-
-export const skinMetricSchema = z.object({
-	key: z.string(),
-	label: z.string(),
-	score: z.number().min(0).max(100),
-	status: z.enum(['good', 'attention', 'priority'])
-});
-
-export const appearanceGuidanceSchema = z.object({
-	id: z.string(),
-	title: z.string(),
-	description: z.string(),
-	impact: z.enum(['high', 'medium', 'low']),
-	expectedImpact: z.number().int().min(1).max(20),
-	difficulty: z.enum(['easy', 'moderate'])
-});
+import {
+	appearanceGuidanceSchema,
+	skinMetricSchema
+} from '$lib/domains/appearance-guidance/public';
 
 export const analysisResultSchema = z.object({
 	mode: z.enum(['live', 'demo']),
@@ -32,9 +21,40 @@ export const analysisResultSchema = z.object({
 	raw: z.record(z.string(), z.unknown()).optional()
 });
 
-export type SkinMetric = z.infer<typeof skinMetricSchema>;
-export type AppearanceGuidance = z.infer<typeof appearanceGuidanceSchema>;
-export type AnalysisResult = z.infer<typeof analysisResultSchema>;
+export const analysisLocaleSchema = z.enum(['en', 'ko']);
+export const analysisScenarioSchema = z.enum(['interview', 'meeting', 'presentation', 'profile']);
+
+const imageFileSchema = z.custom<File>(
+	(value) => {
+		if (value === null || typeof value !== 'object') return false;
+		const candidate = value as Partial<File>;
+		return (
+			typeof candidate.name === 'string' &&
+			typeof candidate.type === 'string' &&
+			typeof candidate.size === 'number' &&
+			typeof candidate.arrayBuffer === 'function'
+		);
+	},
+	{ message: 'Expected an uploaded image file.' }
+);
+
+export const analyzeImageInputSchema = z.object({
+	image: imageFileSchema,
+	brightness: z.number().min(0).max(1),
+	locale: analysisLocaleSchema,
+	scenario: analysisScenarioSchema
+});
+
+export const analyzeImageMutation = defineMutation({
+	name: 'analyze-image',
+	input: analyzeImageInputSchema,
+	result: analysisResultSchema
+});
+
+export type AnalysisResult = InferSchema<typeof analysisResultSchema>;
+export type AnalyzeImageInput = InferSchema<typeof analyzeImageInputSchema>;
+export type AnalysisLocale = InferSchema<typeof analysisLocaleSchema>;
+export type AnalysisScenario = InferSchema<typeof analysisScenarioSchema>;
 
 // Keep the multipart request comfortably below Vercel Functions' 4.5 MB body limit.
 export const MAX_IMAGE_BYTES = 4 * 1024 * 1024;

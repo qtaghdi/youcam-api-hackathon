@@ -1,4 +1,4 @@
-import type { AnalysisResult } from '$lib/domains/analysis/shared/contracts';
+import type { AnalysisResult } from '$lib/domains/analysis/shared/public';
 
 const STORAGE_KEY = 'ai-presence:before-result';
 

@@ -1,0 +1,11 @@
+{
+	"$schema": "https://boundra.dev/schemas/domain-manifest.v1.json",
+	"name": "comparison",
+	"version": "0.1.0",
+	"publicApi": {
+		"client": ["./public.ts"],
+		"server": [],
+		"shared": []
+	},
+	"dependsOn": ["analysis"]
+}

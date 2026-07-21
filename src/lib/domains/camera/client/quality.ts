@@ -31,8 +31,7 @@ function getLandmarker() {
 	return landmarkerPromise;
 }
 
-function averageBrightness(context: CanvasRenderingContext2D, width: number, height: number) {
-	const { data } = context.getImageData(0, 0, width, height);
+function averageBrightness(data: Uint8ClampedArray) {
 	let total = 0;
 	for (let index = 0; index < data.length; index += 16) {
 		total += 0.2126 * data[index] + 0.7152 * data[index + 1] + 0.0722 * data[index + 2];
@@ -44,8 +43,7 @@ function lightingLevel(brightness: number): QualityLevel {
 	return brightness >= 0.38 && brightness <= 0.82 ? 'good' : 'warning';
 }
 
-function backgroundLevel(context: CanvasRenderingContext2D, width: number, height: number) {
-	const { data } = context.getImageData(0, 0, width, height);
+function backgroundLevel(data: Uint8ClampedArray, width: number, height: number) {
 	let total = 0;
 	let totalSquared = 0;
 	let count = 0;
@@ -136,9 +134,10 @@ export async function inspectFrame(video: HTMLVideoElement): Promise<CameraQuali
 	}
 
 	context.drawImage(video, 0, 0, canvas.width, canvas.height);
-	const brightness = averageBrightness(context, canvas.width, canvas.height);
+	const { data } = context.getImageData(0, 0, canvas.width, canvas.height);
+	const brightness = averageBrightness(data);
 	const lighting = lightingLevel(brightness);
-	const background = backgroundLevel(context, canvas.width, canvas.height);
+	const background = backgroundLevel(data, canvas.width, canvas.height);
 	const landmarker = await getLandmarker();
 
 	if (!landmarker) {

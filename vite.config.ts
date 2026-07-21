@@ -2,9 +2,11 @@ import tailwindcss from '@tailwindcss/vite';
 import { defineConfig } from 'vitest/config';
 import adapter from '@sveltejs/adapter-vercel';
 import { sveltekit } from '@sveltejs/kit/vite';
+import { boundra } from 'boundra/vite';
 
 export default defineConfig({
 	plugins: [
+		boundra(),
 		tailwindcss(),
 		sveltekit({
 			compilerOptions: {
