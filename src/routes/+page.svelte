@@ -1584,7 +1584,7 @@
 	.how-it-works {
 		border-top: 1px solid var(--line);
 		border-bottom: 1px solid var(--line);
-		padding: 44px 32px 48px;
+		padding: 40px 32px 32px;
 		text-align: center;
 		background: rgba(255, 255, 255, 0.35);
 	}
@@ -1597,15 +1597,14 @@
 	}
 	.how-it-works > div {
 		max-width: 1060px;
-		margin: 24px auto 0;
+		margin: 20px auto 0;
 		display: grid;
 		grid-template-columns: repeat(3, minmax(0, 1fr));
 		gap: 14px;
 	}
 	.how-it-works article {
 		min-width: 0;
-		min-height: 118px;
-		padding: 20px 22px;
+		padding: 18px 20px;
 		border: 1px solid #dbe2e7;
 		border-radius: 10px;
 		background: #f8fafb;
