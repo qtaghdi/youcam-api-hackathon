@@ -10,8 +10,7 @@ type CacheMetadata = {
 	lastModified?: string;
 };
 
-const USER_AGENT =
-	'Presence-YouCam-Docs-Sync/1.0 (+https://github.com/qtaghdi/youcam-api-hackathon)';
+const USER_AGENT = 'Presence-YouCam-Docs-Sync/1.0 (+https://github.com/qtaghdi/Presence)';
 
 function cacheKey(url: string) {
 	return createHash('sha256').update(url).digest('hex');
