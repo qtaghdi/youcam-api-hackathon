@@ -160,11 +160,6 @@
 					<h2 id="contact-card-title">{copy.contact.title}</h2>
 					<span>{copy.contact.body}</span>
 				</div>
-				<a
-					href="https://github.com/qtaghdi/youcam-api-hackathon/issues"
-					target="_blank"
-					rel="noreferrer">{copy.contact.action}<ExternalLink size={15} aria-hidden="true" /></a
-				>
 			</aside>
 		</article>
 	</div>
@@ -178,9 +173,6 @@
 	navigationLabel={copy.footer.navigation}
 	primaryHref="/"
 	primaryLabel={copy.footer.home}
-	externalLabel={copy.footer.issues}
-	externalAriaLabel={copy.footer.issuesExternal}
-	externalDestination="issues"
 />
 
 <style>
@@ -509,8 +501,7 @@
 		letter-spacing: 0.11em;
 		text-transform: uppercase;
 	}
-	.provider-links a,
-	.contact-card a {
+	.provider-links a {
 		display: inline-flex;
 		align-items: center;
 		gap: 5px;
@@ -521,7 +512,7 @@
 	}
 	.contact-card {
 		display: grid;
-		grid-template-columns: auto minmax(0, 1fr) auto;
+		grid-template-columns: auto minmax(0, 1fr);
 		gap: 16px;
 		align-items: center;
 		padding: 24px;
@@ -550,19 +541,6 @@
 		color: #65727c;
 		font-size: 11px;
 		line-height: 1.55;
-	}
-	.contact-card a {
-		min-height: 44px;
-		padding: 0 14px;
-		border: 1px solid #b7c5ce;
-		border-radius: 6px;
-		background: #fff;
-		white-space: nowrap;
-		text-decoration: none;
-	}
-	.contact-card a:hover {
-		border-color: #8499a8;
-		background: #f8fafb;
 	}
 	@media (max-width: 820px) {
 		.privacy-highlights {
@@ -598,13 +576,6 @@
 		.policy-toc li:nth-child(even) {
 			padding-left: 14px;
 			border-left: 1px solid var(--privacy-line);
-		}
-		.contact-card {
-			grid-template-columns: auto 1fr;
-		}
-		.contact-card a {
-			grid-column: 1 / 3;
-			justify-content: center;
 		}
 	}
 	@media (max-width: 620px) {

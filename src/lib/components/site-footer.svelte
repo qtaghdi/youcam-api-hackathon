@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import { ExternalLink } from '@lucide/svelte';
 
 	let {
 		tagline,
@@ -9,10 +8,7 @@
 		status,
 		navigationLabel,
 		primaryHref,
-		primaryLabel,
-		externalLabel,
-		externalAriaLabel,
-		externalDestination
+		primaryLabel
 	}: {
 		tagline: string;
 		disclaimer: string;
@@ -21,9 +17,6 @@
 		navigationLabel: string;
 		primaryHref: '/' | '/privacy';
 		primaryLabel: string;
-		externalLabel: string;
-		externalAriaLabel: string;
-		externalDestination: 'repository' | 'issues';
 	} = $props();
 </script>
 
@@ -44,27 +37,6 @@
 
 			<nav class="footer-nav" aria-label={navigationLabel}>
 				<a href={resolve(primaryHref)}>{primaryLabel}</a>
-				{#if externalDestination === 'issues'}
-					<a
-						href="https://github.com/qtaghdi/youcam-api-hackathon/issues"
-						aria-label={externalAriaLabel}
-						target="_blank"
-						rel="noreferrer"
-					>
-						{externalLabel}
-						<ExternalLink size={14} aria-hidden="true" />
-					</a>
-				{:else}
-					<a
-						href="https://github.com/qtaghdi/youcam-api-hackathon"
-						aria-label={externalAriaLabel}
-						target="_blank"
-						rel="noreferrer"
-					>
-						{externalLabel}
-						<ExternalLink size={14} aria-hidden="true" />
-					</a>
-				{/if}
 			</nav>
 		</div>
 

@@ -23,6 +23,16 @@ independently buildable and deployable repositories.
 - Keep user-facing API errors localized and do not expose internal causes in
   production responses.
 
+## Writing and typography
+
+- Do not use em dashes (`U+2014`) or en dashes (`U+2013`) in hand-authored
+  product copy, documentation, code comments, commit messages, or pull request
+  text.
+- Rewrite the sentence with a period, comma, colon, or parentheses instead.
+  Use an ASCII hyphen only where it is grammatically appropriate.
+- Do not rewrite vendored or generated files under `docs/youcam-api` solely to
+  enforce this typography rule.
+
 ## Framework feedback loop
 
 - If an issue is specific to Presence, fix it here.

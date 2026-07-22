@@ -986,9 +986,6 @@
 	navigationLabel={copy.footer.navigation}
 	primaryHref="/privacy"
 	primaryLabel={copy.footer.privacy}
-	externalLabel={copy.footer.github}
-	externalAriaLabel={copy.footer.githubExternal}
-	externalDestination="repository"
 />
 
 <style>

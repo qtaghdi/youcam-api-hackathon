@@ -1,7 +1,7 @@
 export const privacyMessages = {
 	en: {
 		meta: {
-			title: 'Privacy notice — Presence',
+			title: 'Privacy notice | Presence',
 			description:
 				'How the Presence hackathon prototype handles camera frames, photos, analysis results, and technical data.'
 		},
@@ -47,7 +47,7 @@ export const privacyMessages = {
 				number: '01',
 				title: 'Who this notice covers',
 				paragraphs: [
-					'This notice applies to the Presence web prototype maintained by the Presence hackathon team in the qtaghdi/youcam-api-hackathon repository.',
+					'This notice applies to the Presence web prototype maintained by the Presence hackathon team.',
 					'Presence helps people prepare a camera setup for interviews, meetings, presentations, and profile photos. It does not identify you, authenticate your identity, or make decisions that have legal or similarly significant effects.'
 				],
 				items: []
@@ -136,7 +136,7 @@ export const privacyMessages = {
 				title: 'Your choices and rights',
 				paragraphs: [
 					'You can deny camera permission and choose a file instead, leave before requesting a report, select “Start over” to clear comparison data, or clear this site’s storage in your browser.',
-					'You may ask about access, correction, deletion, or restriction through the project contact below. Because GitHub Issues are public, do not attach a photo, analysis result, or other sensitive information to an issue.'
+					'This prototype does not yet provide a private privacy-support channel. Do not share a photo, analysis result, or other sensitive information through unrelated external channels.'
 				],
 				items: []
 			},
@@ -156,7 +156,7 @@ export const privacyMessages = {
 				number: '08',
 				title: 'Contact and changes',
 				paragraphs: [
-					'Questions about this prototype can be submitted to the qtaghdi/youcam-api-hackathon GitHub repository. Use a non-sensitive description only; the prototype does not yet provide a private privacy-support channel.',
+					'This prototype does not currently provide a public or private privacy-support channel. Do not share sensitive information through unrelated external channels.',
 					'If the data flow, providers, or storage behavior changes, we will revise this notice and update the date shown above. Material changes should be presented before the new processing starts.'
 				],
 				items: []
@@ -172,22 +172,19 @@ export const privacyMessages = {
 		contact: {
 			label: 'PROJECT CONTACT',
 			title: 'Presence hackathon team',
-			body: 'Open a GitHub Issue with a non-sensitive description. Do not post your photo or report in a public issue.',
-			action: 'Open project issues'
+			body: 'A privacy-support channel is not yet available for this prototype. Do not share your photo or report through unrelated external channels.'
 		},
 		footer: {
 			tagline: 'Clear choices for every photo you share.',
 			home: 'Return to Presence',
 			source: 'Prototype-specific notice · July 21, 2026',
 			status: 'Privacy-first hackathon prototype',
-			navigation: 'Footer links',
-			issues: 'Project issues',
-			issuesExternal: 'Open project issues in a new tab'
+			navigation: 'Footer links'
 		}
 	},
 	ko: {
 		meta: {
-			title: '개인정보처리방침 — Presence',
+			title: '개인정보처리방침 | Presence',
 			description:
 				'Presence 해커톤 프로토타입이 카메라 화면, 사진, 분석 결과, 기술 정보를 처리하는 방법을 안내합니다.'
 		},
@@ -233,7 +230,7 @@ export const privacyMessages = {
 				number: '01',
 				title: '적용 범위와 운영 주체',
 				paragraphs: [
-					'이 방침은 qtaghdi/youcam-api-hackathon 저장소의 Presence 해커톤 팀이 운영하는 Presence 웹 프로토타입에 적용됩니다.',
+					'이 방침은 Presence 해커톤 팀이 운영하는 Presence 웹 프로토타입에 적용됩니다.',
 					'Presence는 면접·미팅·발표·프로필 사진을 위한 카메라 환경 준비를 돕습니다. 이용자를 식별하거나 본인 인증을 하지 않으며, 법적 효과 또는 이와 유사하게 중대한 영향을 주는 결정을 내리지 않습니다.'
 				],
 				items: []
@@ -322,7 +319,7 @@ export const privacyMessages = {
 				title: '이용자의 선택과 권리',
 				paragraphs: [
 					'카메라 권한을 거부하고 파일을 선택하거나, 리포트를 요청하기 전에 나가거나, “처음부터”를 선택해 비교 정보를 지우거나, 브라우저에서 이 사이트의 저장 공간을 지울 수 있습니다.',
-					'아래 프로젝트 문의처를 통해 열람·정정·삭제·처리 제한과 관련한 질문을 남길 수 있습니다. GitHub Issues는 공개되므로 사진, 분석 결과 또는 다른 민감한 정보를 첨부하지 마세요.'
+					'현재 프로토타입에는 비공개 개인정보 문의 채널이 마련되어 있지 않습니다. 관련 없는 외부 채널을 통해 사진, 분석 결과 또는 다른 민감한 정보를 공유하지 마세요.'
 				],
 				items: []
 			},
@@ -342,7 +339,7 @@ export const privacyMessages = {
 				number: '08',
 				title: '문의와 방침 변경',
 				paragraphs: [
-					'프로토타입 관련 질문은 qtaghdi/youcam-api-hackathon GitHub 저장소에 남길 수 있습니다. 민감하지 않은 설명만 사용하세요. 현재 프로토타입에는 비공개 개인정보 문의 채널이 마련되어 있지 않습니다.',
+					'현재 프로토타입에는 공개 또는 비공개 개인정보 문의 채널이 마련되어 있지 않습니다. 관련 없는 외부 채널을 통해 민감한 정보를 공유하지 마세요.',
 					'정보 흐름, 외부 업체 또는 저장 방식이 바뀌면 이 방침과 상단의 변경일을 수정합니다. 중요한 변경은 새로운 처리를 시작하기 전에 안내해야 합니다.'
 				],
 				items: []
@@ -358,17 +355,14 @@ export const privacyMessages = {
 		contact: {
 			label: '프로젝트 문의',
 			title: 'Presence 해커톤 팀',
-			body: '민감하지 않은 내용만 GitHub Issue로 남겨 주세요. 공개 Issue에 사진이나 리포트를 올리지 마세요.',
-			action: '프로젝트 Issues 열기'
+			body: '현재 프로토타입에는 개인정보 문의 채널이 마련되어 있지 않습니다. 관련 없는 외부 채널에 사진이나 리포트를 공유하지 마세요.'
 		},
 		footer: {
 			tagline: '사진을 공유하는 모든 순간에 분명한 선택권을 제공합니다.',
 			home: 'Presence로 돌아가기',
 			source: '프로토타입 전용 방침 · 2026년 7월 21일',
 			status: '개인정보 보호 중심 해커톤 프로토타입',
-			navigation: '푸터 링크',
-			issues: '프로젝트 Issues',
-			issuesExternal: '새 탭에서 프로젝트 Issues 열기'
+			navigation: '푸터 링크'
 		}
 	}
 } as const;

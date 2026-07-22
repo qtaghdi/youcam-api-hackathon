@@ -1,7 +1,7 @@
 export const messages = {
 	en: {
 		meta: {
-			title: 'Presence — Your best first impression',
+			title: 'Presence | Your best first impression',
 			description:
 				'A personal presence check that helps you prepare your best first impression before interviews, meetings, and presentations.'
 		},
@@ -18,10 +18,10 @@ export const messages = {
 		landing: {
 			eyebrow: '30-SECOND INTERVIEW CAMERA CHECK',
 			descriptionSecond:
-				'Presence checks framing, light, face position, background, and color harmony—then gives you practical changes you can verify with a second photo.',
+				'Presence checks framing, light, face position, background, and color harmony. It then gives you practical changes you can verify with a second photo.',
 			scenarioLabel: 'WHAT ARE YOU PREPARING FOR?',
 			boundary:
-				'Practical visual guidance—not personality, competence, appearance, or medical scoring.',
+				'Practical visual guidance. It does not score personality, competence, appearance, or medical condition.',
 			startCamera: 'Start with camera',
 			upload: 'Upload a photo',
 			preparingImage: 'Preparing your photo on this device…',
@@ -68,11 +68,11 @@ export const messages = {
 				{
 					title: 'Verify instead of guessing',
 					description:
-						'Apply the guidance, take another photo, and compare both reports. The improvement is measured by your recapture—not promised by a filter.'
+						'Apply the guidance, take another photo, and compare both reports. The improvement is measured by your recapture, not promised by a filter.'
 				}
 			],
 			closingEyebrow: 'READY WHEN THE MOMENT STARTS',
-			closingTitle: 'Focus on what you came to say—not whether your camera looks right.',
+			closingTitle: 'Focus on what you came to say without worrying about your camera.',
 			closingBody:
 				'No account, no beauty score, and no change to who you are. Just a clearer setup for the moment that matters.',
 			closingCta: 'Check my camera setup'
@@ -259,7 +259,7 @@ export const messages = {
 			current: 'Current',
 			estimatedAfter: 'Guidance projection',
 			estimateNote:
-				'Planning estimate—not a measured result. Apply the actions and recapture to verify the change.',
+				'This is a planning estimate, not a measured result. Apply the actions and recapture to verify the change.',
 			breakdown: 'YOUCAM API SIGNALS',
 			colorTone: 'COLOR HARMONY',
 			undertone: 'camera palette',
@@ -383,9 +383,7 @@ export const messages = {
 			source: 'Analysis by YouCam',
 			status: 'Hackathon prototype',
 			navigation: 'Footer links',
-			privacy: 'Privacy notice',
-			github: 'GitHub',
-			githubExternal: 'Open the Presence GitHub repository in a new tab'
+			privacy: 'Privacy notice'
 		},
 		common: {
 			startOverConfirm: 'Start over and clear this report?'
@@ -393,7 +391,7 @@ export const messages = {
 	},
 	ko: {
 		meta: {
-			title: 'Presence — 더 좋은 첫인상을 준비하세요',
+			title: 'Presence | 더 좋은 첫인상을 준비하세요',
 			description:
 				'면접, 미팅, 발표 전 더 좋은 첫인상을 준비할 수 있도록 돕는 퍼스널 프레즌스 체크입니다.'
 		},
@@ -757,9 +755,7 @@ export const messages = {
 			source: 'YouCam 분석 사용',
 			status: '해커톤 프로토타입',
 			navigation: '푸터 링크',
-			privacy: '개인정보처리방침',
-			github: 'GitHub',
-			githubExternal: '새 탭에서 Presence GitHub 저장소 열기'
+			privacy: '개인정보처리방침'
 		},
 		common: {
 			startOverConfirm: '처음부터 다시 시작하고 현재 리포트를 지울까요?'
