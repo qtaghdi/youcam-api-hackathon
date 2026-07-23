@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
+	import { ArrowRight } from '@lucide/svelte';
 
 	let {
 		tagline,
@@ -36,7 +37,10 @@
 			</div>
 
 			<nav class="footer-nav" aria-label={navigationLabel}>
-				<a href={resolve(primaryHref)}>{primaryLabel}</a>
+				<a href={resolve(primaryHref)}>
+					<span>{primaryLabel}</span>
+					<ArrowRight size={15} aria-hidden="true" />
+				</a>
 			</nav>
 		</div>
 
@@ -99,11 +103,9 @@
 		display: inline-flex;
 		align-items: center;
 		justify-content: center;
-		gap: 6px;
-		padding: 0 14px;
-		border: 1px solid #c8d0d6;
-		border-radius: 6px;
-		background: #fff;
+		gap: 8px;
+		padding: 0 3px;
+		border-bottom: 1px solid #aebbc4;
 		color: #3d5e75;
 		font-size: 12px;
 		font-weight: 750;
@@ -111,12 +113,12 @@
 		touch-action: manipulation;
 		transition:
 			border-color 0.16s ease,
-			background-color 0.16s ease,
-			color 0.16s ease;
+			color 0.16s ease,
+			gap 0.16s ease;
 	}
 	.footer-nav a:hover {
-		border-color: #97a6b1;
-		background: #f8fafb;
+		gap: 11px;
+		border-color: #3d5e75;
 		color: #1f4058;
 	}
 	.footer-nav a:focus-visible {

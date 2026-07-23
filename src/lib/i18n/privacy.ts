@@ -3,7 +3,7 @@ export const privacyMessages = {
 		meta: {
 			title: 'Privacy notice | Presence',
 			description:
-				'How the Presence hackathon prototype handles camera frames, photos, analysis results, and technical data.'
+				'How Presence handles camera frames, photos, analysis results, and technical data.'
 		},
 		navigation: {
 			skip: 'Skip to privacy notice',
@@ -12,16 +12,17 @@ export const privacyMessages = {
 			language: 'View this page in Korean'
 		},
 		hero: {
-			eyebrow: 'HACKATHON PROTOTYPE PRIVACY NOTICE',
+			eyebrow: 'PRIVACY AT PRESENCE',
 			title: 'Your photo should never be a mystery.',
 			description:
 				'This notice explains what Presence processes, when a photo leaves your device, which services help deliver the experience, and how you can remove locally saved data.',
+			badge: 'Clear by design',
 			effective: 'Effective July 20, 2026',
 			updated: 'Last updated July 21, 2026'
 		},
-		prototype: {
-			title: 'About this prototype',
-			body: 'Presence is a hackathon prototype, not a generally available production service. Before a public launch, this notice must be updated with the legal operator’s identity, private contact channel, confirmed vendor retention periods, and complete international-transfer details.'
+		serviceNotice: {
+			title: 'A note about this preview',
+			body: 'Presence is currently available as a limited preview. Before broader availability, this notice will be updated with the legal operator’s identity, a private contact channel, confirmed vendor retention periods, and complete international-transfer details.'
 		},
 		highlights: [
 			{
@@ -47,7 +48,7 @@ export const privacyMessages = {
 				number: '01',
 				title: 'Who this notice covers',
 				paragraphs: [
-					'This notice applies to the Presence web prototype maintained by the Presence hackathon team.',
+					'This notice applies to the Presence web service maintained by the Presence team.',
 					'Presence helps people prepare a camera setup for interviews, meetings, presentations, and profile photos. It does not identify you, authenticate your identity, or make decisions that have legal or similarly significant effects.'
 				],
 				items: []
@@ -93,7 +94,7 @@ export const privacyMessages = {
 				paragraphs: [
 					'We process data to provide the camera check you start, prepare the image, generate the report you request, remember your language and scenario, enable before-and-after comparison, understand aggregate site usage, and keep the service reliable and secure.',
 					'Camera access requires your browser permission. Uploading or capturing a photo does not start remote analysis by itself; selecting “Build my report” starts the request. You can cancel before that step.',
-					'When API credentials are not configured, Presence returns a demo report and does not send the photo to YouCam. The prototype does not intentionally write uploaded photos to its own database or permanent file storage, and the Presence team does not use submitted photos or reports to train its own model.'
+					'When API credentials are not configured, Presence returns a demo report and does not send the photo to YouCam. Presence does not intentionally write uploaded photos to its own database or permanent file storage, and the Presence team does not use submitted photos or reports to train its own model.'
 				],
 				items: []
 			},
@@ -126,7 +127,7 @@ export const privacyMessages = {
 				paragraphs: [
 					'Live camera frames and the current working photo remain in browser memory for the active experience and are discarded when the page state is cleared or the tab is closed. Our server handles an analysis upload for the request and does not intentionally persist it in a Presence database.',
 					'Language and scenario preferences remain in localStorage until you change or clear browser site data. A comparison photo and report remain only after you choose to recapture; selecting “Start over” removes that comparison record. Clearing site data in your browser removes all Presence localStorage.',
-					'Hosting logs, Web Analytics data, and other data processed by external providers follow each provider’s retention rules. We cannot delete data held independently under a provider’s policy through the prototype interface.'
+					'Hosting logs, Web Analytics data, and other data processed by external providers follow each provider’s retention rules. We cannot delete data held independently under a provider’s policy through the Presence interface.'
 				],
 				items: []
 			},
@@ -136,7 +137,7 @@ export const privacyMessages = {
 				title: 'Your choices and rights',
 				paragraphs: [
 					'You can deny camera permission and choose a file instead, leave before requesting a report, select “Start over” to clear comparison data, or clear this site’s storage in your browser.',
-					'This prototype does not yet provide a private privacy-support channel. Do not share a photo, analysis result, or other sensitive information through unrelated external channels.'
+					'Presence does not yet provide a private privacy-support channel. Do not share a photo, analysis result, or other sensitive information through unrelated external channels.'
 				],
 				items: []
 			},
@@ -147,7 +148,7 @@ export const privacyMessages = {
 				paragraphs: [
 					'The production deployment is intended to use HTTPS, the YouCam API key remains server-side, and images are reduced in size in the browser before upload. No safeguard eliminates every risk, so do not upload a photo you are not comfortable having processed by the providers listed above.',
 					'Presence does not currently set its own cookies or include an advertising SDK. It includes Vercel Web Analytics for the limited usage data described above and uses localStorage for preferences and comparison data.',
-					'This prototype is not directed to children under 14. A child under 14 should not upload a photo without consent and supervision from a parent or legal guardian.'
+					'Presence is not directed to children under 14. A child under 14 should not upload a photo without consent and supervision from a parent or legal guardian.'
 				],
 				items: []
 			},
@@ -156,7 +157,7 @@ export const privacyMessages = {
 				number: '08',
 				title: 'Contact and changes',
 				paragraphs: [
-					'This prototype does not currently provide a public or private privacy-support channel. Do not share sensitive information through unrelated external channels.',
+					'Presence does not currently provide a public or private privacy-support channel. Do not share sensitive information through unrelated external channels.',
 					'If the data flow, providers, or storage behavior changes, we will revise this notice and update the date shown above. Material changes should be presented before the new processing starts.'
 				],
 				items: []
@@ -170,15 +171,15 @@ export const privacyMessages = {
 			google: 'Google Privacy Policy'
 		},
 		contact: {
-			label: 'PROJECT CONTACT',
-			title: 'Presence hackathon team',
-			body: 'A privacy-support channel is not yet available for this prototype. Do not share your photo or report through unrelated external channels.'
+			label: 'PRIVACY CONTACT',
+			title: 'Presence team',
+			body: 'A dedicated privacy-support channel is not yet available. Do not share your photo or report through unrelated external channels.'
 		},
 		footer: {
 			tagline: 'Clear choices for every photo you share.',
 			home: 'Return to Presence',
-			source: 'Prototype-specific notice · July 21, 2026',
-			status: 'Privacy-first hackathon prototype',
+			source: 'Privacy notice · July 21, 2026',
+			status: 'No account required',
 			navigation: 'Footer links'
 		}
 	},
@@ -186,7 +187,7 @@ export const privacyMessages = {
 		meta: {
 			title: '개인정보처리방침 | Presence',
 			description:
-				'Presence 해커톤 프로토타입이 카메라 화면, 사진, 분석 결과, 기술 정보를 처리하는 방법을 안내합니다.'
+				'Presence가 카메라 화면, 사진, 분석 결과, 기술 정보를 처리하는 방법을 안내합니다.'
 		},
 		navigation: {
 			skip: '개인정보처리방침으로 바로가기',
@@ -195,16 +196,17 @@ export const privacyMessages = {
 			language: '영문으로 보기'
 		},
 		hero: {
-			eyebrow: '해커톤 프로토타입 개인정보처리방침',
+			eyebrow: 'PRESENCE 개인정보 보호',
 			title: '내 사진이 어떻게 쓰이는지 분명해야 합니다.',
 			description:
 				'Presence가 어떤 정보를 처리하는지, 사진이 언제 기기를 벗어나는지, 어떤 외부 서비스를 이용하는지, 브라우저에 남은 정보를 어떻게 지울 수 있는지 안내합니다.',
+			badge: '처음부터 분명하게',
 			effective: '시행일 2026년 7월 20일',
 			updated: '최종 업데이트 2026년 7월 21일'
 		},
-		prototype: {
-			title: '프로토타입 안내',
-			body: 'Presence는 해커톤 프로토타입이며 아직 일반에 정식 제공되는 서비스가 아닙니다. 정식 공개 전 법적 운영 주체 정보, 비공개 문의 채널, 외부 처리업체의 확정 보유기간, 국외 이전 세부사항을 보완해 이 방침을 개정해야 합니다.'
+		serviceNotice: {
+			title: '현재 서비스 안내',
+			body: 'Presence는 현재 제한된 프리뷰로 제공됩니다. 더 넓은 공개 전 법적 운영 주체 정보, 비공개 문의 채널, 외부 처리업체의 확정 보유기간, 국외 이전 세부사항을 보완해 이 방침을 개정할 예정입니다.'
 		},
 		highlights: [
 			{
@@ -230,7 +232,7 @@ export const privacyMessages = {
 				number: '01',
 				title: '적용 범위와 운영 주체',
 				paragraphs: [
-					'이 방침은 Presence 해커톤 팀이 운영하는 Presence 웹 프로토타입에 적용됩니다.',
+					'이 방침은 Presence 팀이 운영하는 Presence 웹 서비스에 적용됩니다.',
 					'Presence는 면접·미팅·발표·프로필 사진을 위한 카메라 환경 준비를 돕습니다. 이용자를 식별하거나 본인 인증을 하지 않으며, 법적 효과 또는 이와 유사하게 중대한 영향을 주는 결정을 내리지 않습니다.'
 				],
 				items: []
@@ -276,7 +278,7 @@ export const privacyMessages = {
 				paragraphs: [
 					'이용자가 시작한 카메라 체크 제공, 이미지 준비, 요청한 리포트 생성, 언어·상황 설정 기억, 전후 비교, 전체 사이트 이용 현황 파악, 서비스 안정성과 보안을 위해 정보를 처리합니다.',
 					'카메라는 브라우저 권한을 받은 뒤 사용합니다. 사진을 촬영하거나 업로드하는 것만으로 원격 분석이 시작되지는 않으며, “리포트 만들기”를 선택할 때 요청이 시작됩니다. 그 전에는 취소할 수 있습니다.',
-					'API 키가 설정되지 않은 경우 Presence는 데모 리포트를 만들며 사진을 YouCam으로 보내지 않습니다. 프로토타입은 업로드한 사진을 자체 데이터베이스나 영구 파일 저장소에 의도적으로 기록하지 않으며, Presence 팀은 제출된 사진이나 리포트를 자체 모델 학습에 사용하지 않습니다.'
+					'API 키가 설정되지 않은 경우 Presence는 데모 리포트를 만들며 사진을 YouCam으로 보내지 않습니다. Presence는 업로드한 사진을 자체 데이터베이스나 영구 파일 저장소에 의도적으로 기록하지 않으며, Presence 팀은 제출된 사진이나 리포트를 자체 모델 학습에 사용하지 않습니다.'
 				],
 				items: []
 			},
@@ -309,7 +311,7 @@ export const privacyMessages = {
 				paragraphs: [
 					'실시간 카메라 화면과 현재 작업 중인 사진은 이용 과정의 브라우저 메모리에 머물며 페이지 상태가 초기화되거나 탭을 닫으면 사라집니다. 서버는 요청 동안 분석 이미지를 처리하고 Presence 데이터베이스에 의도적으로 보관하지 않습니다.',
 					'언어와 상황 설정은 변경하거나 브라우저의 사이트 데이터를 지울 때까지 localStorage에 남습니다. 비교용 사진과 리포트는 개선 후 다시 촬영하기를 선택한 경우에만 저장되며, “처음부터”를 선택하면 삭제됩니다. 브라우저에서 이 사이트의 데이터를 지우면 모든 Presence localStorage가 삭제됩니다.',
-					'호스팅 로그, Web Analytics 정보와 외부 업체가 처리하는 정보에는 각 업체의 보유 정책이 적용됩니다. 프로토타입 화면에서는 업체가 해당 정책에 따라 독립적으로 보유한 정보를 직접 삭제할 수 없습니다.'
+					'호스팅 로그, Web Analytics 정보와 외부 업체가 처리하는 정보에는 각 업체의 보유 정책이 적용됩니다. Presence 화면에서는 업체가 해당 정책에 따라 독립적으로 보유한 정보를 직접 삭제할 수 없습니다.'
 				],
 				items: []
 			},
@@ -319,7 +321,7 @@ export const privacyMessages = {
 				title: '이용자의 선택과 권리',
 				paragraphs: [
 					'카메라 권한을 거부하고 파일을 선택하거나, 리포트를 요청하기 전에 나가거나, “처음부터”를 선택해 비교 정보를 지우거나, 브라우저에서 이 사이트의 저장 공간을 지울 수 있습니다.',
-					'현재 프로토타입에는 비공개 개인정보 문의 채널이 마련되어 있지 않습니다. 관련 없는 외부 채널을 통해 사진, 분석 결과 또는 다른 민감한 정보를 공유하지 마세요.'
+					'현재 Presence에는 비공개 개인정보 문의 채널이 마련되어 있지 않습니다. 관련 없는 외부 채널을 통해 사진, 분석 결과 또는 다른 민감한 정보를 공유하지 마세요.'
 				],
 				items: []
 			},
@@ -330,7 +332,7 @@ export const privacyMessages = {
 				paragraphs: [
 					'운영 배포에는 HTTPS를 사용하고, YouCam API 키는 서버에만 두며, 전송 전 브라우저에서 이미지 크기를 줄입니다. 모든 위험을 없애는 방법은 없으므로 위 외부 업체가 처리하는 데 동의하기 어려운 사진은 업로드하지 마세요.',
 					'현재 Presence는 자체 쿠키를 설정하거나 광고 SDK를 포함하지 않습니다. 위에서 설명한 제한된 이용 정보를 위해 Vercel Web Analytics를 사용하고 설정과 비교 정보를 저장하기 위해 localStorage를 사용합니다.',
-					'이 프로토타입은 만 14세 미만 아동을 대상으로 하지 않습니다. 만 14세 미만 아동은 부모 또는 법정대리인의 동의와 감독 없이 사진을 업로드하지 않아야 합니다.'
+					'Presence는 만 14세 미만 아동을 대상으로 하지 않습니다. 만 14세 미만 아동은 부모 또는 법정대리인의 동의와 감독 없이 사진을 업로드하지 않아야 합니다.'
 				],
 				items: []
 			},
@@ -339,7 +341,7 @@ export const privacyMessages = {
 				number: '08',
 				title: '문의와 방침 변경',
 				paragraphs: [
-					'현재 프로토타입에는 공개 또는 비공개 개인정보 문의 채널이 마련되어 있지 않습니다. 관련 없는 외부 채널을 통해 민감한 정보를 공유하지 마세요.',
+					'현재 Presence에는 공개 또는 비공개 개인정보 문의 채널이 마련되어 있지 않습니다. 관련 없는 외부 채널을 통해 민감한 정보를 공유하지 마세요.',
 					'정보 흐름, 외부 업체 또는 저장 방식이 바뀌면 이 방침과 상단의 변경일을 수정합니다. 중요한 변경은 새로운 처리를 시작하기 전에 안내해야 합니다.'
 				],
 				items: []
@@ -353,15 +355,15 @@ export const privacyMessages = {
 			google: 'Google 개인정보처리방침'
 		},
 		contact: {
-			label: '프로젝트 문의',
-			title: 'Presence 해커톤 팀',
-			body: '현재 프로토타입에는 개인정보 문의 채널이 마련되어 있지 않습니다. 관련 없는 외부 채널에 사진이나 리포트를 공유하지 마세요.'
+			label: '개인정보 문의',
+			title: 'Presence 팀',
+			body: '현재 전용 개인정보 문의 채널은 마련되어 있지 않습니다. 관련 없는 외부 채널에 사진이나 리포트를 공유하지 마세요.'
 		},
 		footer: {
 			tagline: '사진을 공유하는 모든 순간에 분명한 선택권을 제공합니다.',
 			home: 'Presence로 돌아가기',
-			source: '프로토타입 전용 방침 · 2026년 7월 21일',
-			status: '개인정보 보호 중심 해커톤 프로토타입',
+			source: '개인정보처리방침 · 2026년 7월 21일',
+			status: '가입 없이 이용',
 			navigation: '푸터 링크'
 		}
 	}
