@@ -7,7 +7,7 @@ export const messages = {
 		},
 		header: {
 			home: 'Presence home',
-			privacy: 'Privacy · No account required',
+			privacy: 'How we handle your photo',
 			progress: 'Report progress',
 			language: 'View this page in Korean',
 			skip: 'Skip to main content',
@@ -392,9 +392,9 @@ export const messages = {
 			disclaimer:
 				'Practical visual readiness guidance. Not personality, competence, appearance, or medical scoring.',
 			source: 'Analysis by YouCam',
-			status: 'Hackathon prototype',
+			status: 'No account required',
 			navigation: 'Footer links',
-			privacy: 'Privacy notice'
+			privacy: 'See how we handle your photo'
 		},
 		common: {
 			startOverConfirm: 'Start over and clear this report?'
@@ -408,7 +408,7 @@ export const messages = {
 		},
 		header: {
 			home: 'Presence 홈',
-			privacy: '개인정보처리방침 · 가입 없이 이용',
+			privacy: '사진 처리 방식',
 			progress: '리포트 진행 단계',
 			language: '영문으로 보기',
 			skip: '본문으로 바로가기',
@@ -775,9 +775,9 @@ export const messages = {
 			disclaimer:
 				'직접 조절할 수 있는 화면 요소를 위한 가이드이며 성격·역량·외모·의료 평가가 아닙니다.',
 			source: 'YouCam 분석 사용',
-			status: '해커톤 프로토타입',
+			status: '가입 없이 이용',
 			navigation: '푸터 링크',
-			privacy: '개인정보처리방침'
+			privacy: '사진 처리 방식 보기'
 		},
 		common: {
 			startOverConfirm: '처음부터 다시 시작하고 현재 리포트를 지울까요?'
